@@ -40,6 +40,30 @@ volatile unsigned char *getDirection(unsigned char port) {
     return 0;
 }
 
+volatile unsigned char *getSelection0(unsigned char port) {
+    switch(port) {
+    case 1: return &P1SEL0;
+    case 2: return &P2SEL0;
+    case 3: return &P3SEL0;
+    case 4: return &P4SEL0;
+    case 5: return &P5SEL0;
+    }
+
+    return 0;
+}
+
+volatile unsigned char *getSelection1(unsigned char port) {
+    switch(port) {
+    case 1: return &P1SEL1;
+    case 2: return &P2SEL1;
+    case 3: return &P3SEL1;
+    case 4: return &P4SEL1;
+    case 5: return &P5SEL1;
+    }
+
+    return 0;
+}
+
 volatile unsigned char *getOut(unsigned char port) {
     switch(port) {
     case 1: return &P1OUT;
@@ -103,7 +127,14 @@ void setAllOutput() {
         port = outputSequence[i].port;
         mask = outputSequence[i].mask;
 
+        // Set function as IO
+        *getSelection0(port) &= ~mask;
+        *getSelection1(port) &= ~mask;
+
+        // Set direction as output
         *getDirection(port) |= mask;
+
+        // Clear bit
         *getOut(port) &= ~mask;
     }
 }
