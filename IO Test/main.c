@@ -94,6 +94,28 @@ volatile BYTE *getIn(BYTE port) {
     return 0;
 }
 
+volatile BYTE *getSelection0(unsigned char port) {
+    switch(port) {
+    case 1: return &P1SEL0;
+    case 2: return &P2SEL0;
+    case 3: return &P3SEL0;
+    case 4: return &P4SEL0;
+    case 5: return &P5SEL0;
+    }
+    return 0;
+}
+
+volatile BYTE *getSelection1(unsigned char port) {
+    switch (port) {
+    case 1: return &P1SEL1;
+    case 2: return &P2SEL1;
+    case 3: return &P3SEL1;
+    case 4: return &P4SEL1;
+    case 5: return &P5SEL1;
+    }
+    return 0;
+}
+
 /**
  * Sets all input pins used by the microcontroller.
  */
@@ -102,9 +124,13 @@ void setAllInput() {
     BYTE port, mask;
 
     // Set input pins
-    for (i = 0; i < sizeof(inputSequence)/sizeof(BYTE); i++) {
+    for (i = 0; i < 5; i++) {
         port = inputSequence[i].port;
         mask = inputSequence[i].mask;
+
+        // Set function as IO
+        *getSelection0(port) &= ~mask;
+        *getSelection1(port) &= ~mask;
 
         // Set direction to input
         *getDirection(port) &= ~mask;
@@ -121,6 +147,10 @@ void setAllOutput() {
     for(i = 0; i < 17; i++) {
         port = outputSequence[i].port;
         mask = outputSequence[i].mask;
+
+        // Set function as IO
+        *getSelection0(port) &= ~mask;
+        *getSelection1(port) &= ~mask;
 
         // Set pin as output
         *getDirection(port) |= mask;
@@ -199,7 +229,7 @@ void inputTest() {
     unsigned int i = 0;
     BYTE port, mask;
 
-    for (i = 0; i < sizeof(inputSequence)/sizeof(BYTE); i++) {
+    for (i = 0; i < 5; i++) {
 
         // Clear the LED
         *getOut(LED.port) &= ~LED.mask;
@@ -266,8 +296,8 @@ int main(void)
     config();
 
     // Run the tests
-    //inputTest();
-    outputTest();
+    inputTest();
+    //outputTest();
 
     return 0;
 }
