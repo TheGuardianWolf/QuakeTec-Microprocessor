@@ -219,6 +219,7 @@ void listenToSlave(device_t *devicePtr) {
 
     isListening = true;
 
+    // TODO
     // TESTING: transmit default value to trigger receive interrupt
     EUSCI_A_SPI_transmitData(currentSlavePtr->spiBaseAddress, DEFAULT_SEND);
 }
