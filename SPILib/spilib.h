@@ -20,6 +20,9 @@ typedef struct {
     uint16_t spiBaseAddress;
     handler_func receiveHandler;
     byte expectedLength;
+
+    // CS storage
+    uint8_t csPort, csPin;
 } device_t;
 
 /**
@@ -42,7 +45,7 @@ void initialise();
 /**
  * Returns immediately. Returns true if the system was ready to send data. If it returns false the data was not sent.
  */
-bool transmit(const byte *dataPtr, byte length, device_t *device);
+bool transmit(const byte *dataPtr, uint16_t length, device_t *device);
 
 /**
  * Registers a function that handles incoming data. This will be called when length bytes have been recevied.
