@@ -14,7 +14,8 @@ void main(void)
     int i;
 
     for(i = 0; i < DATA_LENGTH; i++) {
-        dataPtr[i] = (byte) i;
+        //dataPtr[i] = (byte) ('A' + (i % 26));
+        dataPtr[i] = (byte) 0b1001001;
     }
 
     // Stop watchdog timer
@@ -36,9 +37,12 @@ void main(void)
     __bis_SR_register(GIE);
 
     i = 0;
+
     while (1) {
-        transmit(dataPtr, DATA_LENGTH, &DIGIPOT);
         GPIO_toggleOutputOnPin(GPIO_PORT_P1, GPIO_PIN0);
-        __delay_cycles(100000);
+        //transmit(dataPtr + (i % 26), 1, &DIGIPOT);
+        transmit(dataPtr, DATA_LENGTH, &DIGIPOT);
+        i++;
+        __delay_cycles(100);
     }
 }
