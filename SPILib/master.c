@@ -27,7 +27,7 @@ void main(void)
     GPIO_setAsOutputPin(GPIO_PORT_P1, GPIO_PIN1);
     GPIO_setOutputLowOnPin(GPIO_PORT_P1, GPIO_PIN0);
 
-    initialise();
+    QT_SPI_initialise();
 
     // Disable the GPIO power-on default high-impedance mode
     // to activate previously configured port settings
@@ -41,7 +41,7 @@ void main(void)
     while (1) {
         GPIO_toggleOutputOnPin(GPIO_PORT_P1, GPIO_PIN0);
         //transmit(dataPtr + (i % 26), 1, &DIGIPOT);
-        transmit(dataPtr, DATA_LENGTH, &DIGIPOT);
+        QT_SPI_transmit(dataPtr, DATA_LENGTH, &DIGIPOT);
         i++;
         __delay_cycles(100);
     }

@@ -121,25 +121,58 @@ static void initialiseMaster() {
  * Sets up MSP430 as slave device for communication with OBC.
  */
 static void initialiseSlave() {
+    const uint8_t port = GPIO_PORT_P4;
 
+    const uint8_t mosi = GPIO_PIN3;
+    const uint8_t miso = GPIO_PIN2;
+    const uint8_t clk = GPIO_PIN1;
+
+    // Set OBC chip select as input
+    GPIO_setAsInputPin(OBC.csPort, OBC.csPin);
+
+    // Set MOSI and CLK lines as input
+    GPIO_setAsPeripheralModuleFunctionInputPin(
+            port,
+            mosi + clk,
+            GPIO_PRIMARY_MODULE_FUNCTION
+    );
+
+    // Set MISO line as output
+    GPIO_setAsPeripheralModuleFunctionOutputPin(
+            port,
+            miso,
+            GPIO_PRIMARY_MODULE_FUNCTION
+    );
+
+    // Initialize slave to MSB first, inactive high clock polarity and 4 wire SPI
+    EUSCI_A_SPI_initSlaveParam param = {0};
+    param.msbFirst = EUSCI_A_SPI_MSB_FIRST;
+    param.clockPhase = EUSCI_A_SPI_PHASE_DATA_CHANGED_ONFIRST_CAPTURED_ON_NEXT;
+    param.clockPolarity = EUSCI_A_SPI_CLOCKPOLARITY_INACTIVITY_HIGH;
+    param.spiMode = EUSCI_A_SPI_4PIN_UCxSTE_ACTIVE_LOW;
+    EUSCI_A_SPI_initSlave(EUSCI_A1_BASE, &param);
+
+    // Select 4 pin functionality
+    EUSCI_A_SPI_select4PinFunctionality(EUSCI_A1_BASE, EUSCI_A_SPI_ENABLE_SIGNAL_FOR_4WIRE_SLAVE);
+
+    // Enable SPI Module
+    EUSCI_A_SPI_enable(EUSCI_A1_BASE);
 }
 
 static void enableAllInterrupts() {
-    // Clear receive interrupt flag
+    // Clear receive interrupt flag for communication with slaves
     EUSCI_B_SPI_clearInterrupt(EUSCI_B1_BASE,
                                EUSCI_B_SPI_RECEIVE_INTERRUPT | EUSCI_B_SPI_TRANSMIT_INTERRUPT);
 
-    // Enable USCI_B1 RX interrupt
+    // Enable receive interrupt
     EUSCI_B_SPI_enableInterrupt(EUSCI_B1_BASE,
                                 EUSCI_B_SPI_RECEIVE_INTERRUPT | EUSCI_B_SPI_TRANSMIT_INTERRUPT);
 
-    // Slave interrupt enable
-
-    // Clear receive interrupt flag
+    // Clear receive interrupt flag for communication with OBC
     EUSCI_A_SPI_clearInterrupt(EUSCI_A1_BASE,
                                EUSCI_A_SPI_RECEIVE_INTERRUPT | EUSCI_A_SPI_TRANSMIT_INTERRUPT);
 
-    // Enable USCI_B1 RX interrupt
+    // Enable receive interrupt
     EUSCI_A_SPI_enableInterrupt(EUSCI_A1_BASE,
                                 EUSCI_A_SPI_RECEIVE_INTERRUPT | EUSCI_A_SPI_TRANSMIT_INTERRUPT);
 }
@@ -162,6 +195,95 @@ static void setChipSelect(device_t* devicePtr) {
     if (currentSlavePtr != NULL) {
         // Set new cs
         GPIO_setOutputLowOnPin(currentSlavePtr->csPort, currentSlavePtr->csPin);
+    }
+}
+
+/**
+ * This method sends a single byte to a device. This method sets the isCurrentlySending flag if the device is a slave device.
+ */
+static void sendByte(device_t *devicePtr, spi_transmit_func transmitData, const byte *transmitBufferPtr,
+                     const byte *transmitBufferStopPtr) {
+
+    if (transmitBufferPtr == NULL) {
+
+        // Have we finished sending to a slave device?
+        if (devicePtr->isSlave) {
+            isCurrentlySending = false;
+        }
+        return;
+    }
+
+    // Send the byte
+    (*(transmitData))(devicePtr->spiBaseAddress, *transmitBufferPtr);
+
+    // Are we sending to a slave device?
+    if (devicePtr->isSlave) {
+        isCurrentlySending = true;
+    }
+
+    // Move pointer to the next byte to send
+    transmitBufferPtr++;
+
+    // Have we finished sending the packet?
+    if (transmitBufferPtr == transmitBufferStopPtr) {
+        transmitBufferPtr = NULL;
+    }
+}
+
+/**
+ * This method sends a single byte to the slave. This method also sets the isCurrentlySending flag.
+ *
+ * THIS CALL IS LOCKED WITH THE TO SLAVE CHANNEL
+ */
+static void sendByteToSlave() {
+    if (slaveTransmitPtr == NULL) {
+        isCurrentlySending = false;
+        return;
+    }
+
+    EUSCI_B_SPI_transmitData(currentSlavePtr->spiBaseAddress, *slaveTransmitPtr);
+    isCurrentlySending = true;
+    slaveTransmitPtr++;
+
+    if (slaveTransmitPtr == slaveTransmitStopPtr) {
+        slaveTransmitPtr = NULL;
+    }
+}
+
+/**
+ * This method sends a single 0 to the slave. This method also sets the isCurrentlySending flag.
+ *
+ * This method is locked by the
+ */
+static void sendNullByteToSlave() {
+    EUSCI_B_SPI_transmitData(currentSlavePtr->spiBaseAddress, DEFAULT_SEND);
+    isCurrentlySending = true;
+}
+
+/**
+ * Receives a byte of data from a device. Runs a receive handler when all data has been received.
+ */
+static void receiveByte(device_t *devicePtr, spi_receive_func receiveData, byte *receiveBufferPtr,
+                        byte *receiveBufferStartPtr) {
+    // Check if receive handler has been set
+    if (devicePtr->receiveHandler == NULL) {
+        return;
+    }
+
+    // Put received byte of data in slave buffer
+    *receiveBufferPtr = (*receiveData)(devicePtr->spiBaseAddress);
+
+    // Move buffer pointer to next byte
+    receiveBufferPtr++;
+
+    // If the buffer is full
+    if (receiveBufferPtr - receiveBufferStartPtr >= devicePtr->expectedLength) {
+
+        // Run the handler
+        (*(devicePtr->receiveHandler))(receiveBufferStartPtr);
+
+        // Clear the buffer
+        receiveBufferPtr = receiveBufferStartPtr;
     }
 }
 
@@ -196,7 +318,7 @@ static void enableInterrupts(device_t *device) {
 /**
  * Sets up the SPI library
  */
-void initialise() {
+void QT_SPI_initialise() {
 
     // Set receive buffer to point to start of buffer
     masterReceiveBufferPtr = masterReceiveBuffer;
@@ -222,31 +344,12 @@ void initialise() {
 }
 
 /**
- * This method sends a single byte to the slave. This method also sets the isCurrentlySending flag.
- *
- * THIS CALL IS LOCKED WITH THE TO SLAVE CHANNEL
- */
-static void sendByteToSlave() {
-    if (slaveTransmitPtr == NULL) {
-        isCurrentlySending = false;
-        return;
-    }
-
-    EUSCI_B_SPI_transmitData(currentSlavePtr->spiBaseAddress, *slaveTransmitPtr);
-    isCurrentlySending = true;
-    slaveTransmitPtr++;
-
-    if (slaveTransmitPtr == slaveTransmitStopPtr) {
-        slaveTransmitPtr = NULL;
-    }
-}
-
-/**
  * Returns immediately. Returns true if the system was ready to send data. If it returns false the data was not sent.
  *
  * THIS METHOD CAN BE INTERLEIVED WITH ANY INTERRUPT
  */
-bool transmit(const byte *dataPtr, uint16_t length, device_t *devicePtr) {
+bool QT_SPI_transmit(const byte *dataPtr, uint16_t length, device_t *devicePtr) {
+
     disableInterrupts(devicePtr);
 
     // Check if we are currently sending, if we are return false
@@ -295,21 +398,11 @@ bool transmit(const byte *dataPtr, uint16_t length, device_t *devicePtr) {
 }
 
 /**
- * This method sends a single 0 to the slave. This method also sets the isCurrentlySending flag.
- *
- * This method is locked by the
- */
-static void sendNullByteToSlave() {
-    EUSCI_B_SPI_transmitData(currentSlavePtr->spiBaseAddress, DEFAULT_SEND);
-    isCurrentlySending = true;
-}
-
-/**
  * Registers a function that handles incoming data. This will be called when length bytes have been recevied.
  *
  * THIS METHOD WILL INTERLIEVE WITH ANY INTERRUPTS
  */
-void setReceiveHandler(handler_func handler, byte length, device_t *devicePtr) {
+void QT_SPI_setReceiveHandler(handler_func handler, byte length, device_t *devicePtr) {
 
     // Disable receive interrupts (interrupts will be queued for processing afterwards)
     disableInterrupts(devicePtr);
@@ -332,7 +425,8 @@ void setReceiveHandler(handler_func handler, byte length, device_t *devicePtr) {
  *
  * THIS METHOD WILL INTERLIEVE WITH ANY INTERRUPTS
  */
-void listenToSlave(device_t *devicePtr) {
+void QT_SPI_listenToSlave(device_t *devicePtr) {
+
     disableInterrupts(devicePtr);
 
     // Clear data in receive buffer
@@ -355,7 +449,7 @@ void listenToSlave(device_t *devicePtr) {
  *
  * THIS METHOD WILL INTERLIEVE WITH ANY INTERRUPTS
  */
-void stopListeningToSlave() {
+void QT_SPI_stopListeningToSlave() {
     isListening = false;
 }
 
@@ -364,7 +458,7 @@ void stopListeningToSlave() {
  *
  * THIS METHOD WILL INTERLIEVE WITH ANY INTERRUPTS
  */
-bool isDataSent() {
+bool QT_SPI_isDataSent() {
     return masterTransmitPtr == NULL && slaveTransmitPtr == NULL;
 }
 
@@ -373,7 +467,7 @@ bool isDataSent() {
  */
 
 /**
- * Interrupt for processing received and transmitted data from the A0 channel (from slave devices)
+ * Interrupt for processing received and transmitted data from the B1 channel (from slave devices)
  */
 #pragma vector=USCI_B1_VECTOR
 __interrupt void USCI_B1_ISR(void)
@@ -430,4 +524,36 @@ __interrupt void USCI_B1_ISR(void)
     default:
         break;
     }
+}
+
+/**
+ * Interrupt for processing transmitted and received data from OBC
+ */
+#pragma vector=USCI_A1_VECTOR
+__interrupt
+void USCI_A1_ISR (void)
+{
+    switch(UCA1IV)
+        {
+            // Receive data case
+            case USCI_SPI_UCRXIFG:
+
+                // Receive data from master
+                receiveByte(&OBC, &EUSCI_A_SPI_receiveData, masterReceiveBufferPtr, masterReceiveBuffer);
+                break;
+
+            // Transmit data case
+            case USCI_SPI_UCTXIFG:
+
+                // Wait until the transmit buffer is ready
+                while (!EUSCI_A_SPI_getInterruptStatus(OBC.spiBaseAddress,
+                                                       EUSCI_A_SPI_TRANSMIT_INTERRUPT));
+
+                // Transmit data to master
+                sendByte(&OBC, &EUSCI_A_SPI_transmitData, masterTransmitPtr,
+                                     masterTransmitStopPtr);
+
+            default:
+                break;
+        }
 }
