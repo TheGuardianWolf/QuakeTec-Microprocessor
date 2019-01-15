@@ -1,4 +1,4 @@
-#include "spilib.h"
+#include <SpiLib/QT_SPI_SpiLib.h>
 #include "driverlib.h"
 
 #define DATA_LENGTH 128

@@ -4,19 +4,15 @@
 /*
  * Includes
  */
-#include <stdbool.h>
-#include <stdint.h>
+#include <Common/QT_Common.h>
 
 /*
  * Type definitions
  */
-
-typedef unsigned char byte;
-
 typedef void(*handler_func)(const byte *);
 
-typedef void(*spi_transmit_func)(uint16_t, uint8_t);
 typedef byte(*spi_receive_func)(uint16_t);
+typedef void(*spi_transmit_func)(uint16_t, uint8_t);
 
 typedef struct {
     bool isSlave;

@@ -1,10 +1,7 @@
 /*
  * Includes
  */
-
-#include "driverlib.h"
-#include <stddef.h>
-#include "spilib.h"
+#include <SpiLib/QT_SPI_SpiLib.h>
 
 /*
  * Defines
