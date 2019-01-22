@@ -5,7 +5,9 @@
  *      Author: james
  */
 
-#include <stdlib>
+#include <stdlib.h>
+
+#include "driverlib.h"
 #include "spilib.h"
 
 static uint16_t registerValue;
@@ -17,10 +19,16 @@ static uint16_t registerValue;
 #define CONTROL_SHIFT 10
 
 #define DATA_MASK 0x3ff
-#define DATA_SHIFT 0
+
+#define DIGIPOT_RDY_PORT GPIO_PORT_P2
+#define DIGIPOT_RDY_PIN GPIO_PIN7
 
 static void setReady(bool high) {
-    // TODO
+    if (high) {
+        GPIO_setOutputHighOnPin(DIGIPOT_RDY_PORT, DIGIPOT_RDY_PIN);
+    } else {
+        GPIO_setOutputLowOnPin(DIGIPOT_RDY_PORT, DIGIPOT_RDY_PIN);
+    }
 }
 
 /**
@@ -55,9 +63,9 @@ void QT_DIGIPOT_setControlBits(uint8_t controlBits) {
  * This sets the data bits for the Digipot. If data is not ready to send this
  * method will block until the data starts to send.
  */
-void QT_DIGIPOT_setDataBits() {
-    registerValue &= ~CONTROL_MASK;
-    registerValue |= (controlBits << CONTROL_SHIFT) & CONTROL_MASK;
+void QT_DIGIPOT_setDataBits(uint8_t dataBits) {
+    registerValue &= ~DATA_MASK;
+    registerValue |= dataBits & DATA_MASK;
 
     syncRegister();
 }
