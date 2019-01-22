@@ -6,7 +6,16 @@
 byte dataPtr[DATA_LENGTH];
 
 void handler(const byte *data) {
+    int i;
+    byte d [100];
 
+    GPIO_toggleOutputOnPin(GPIO_PORT_P1, GPIO_PIN1);
+
+    for(i = 0; i < 100; i++) {
+        d[i] = data[i];
+    }
+
+    i = 5;
 }
 
 void main(void)
@@ -25,7 +34,7 @@ void main(void)
     GPIO_setOutputLowOnPin(GPIO_PORT_P1, GPIO_PIN0);
 
     GPIO_setAsOutputPin(GPIO_PORT_P1, GPIO_PIN1);
-    GPIO_setOutputLowOnPin(GPIO_PORT_P1, GPIO_PIN0);
+    GPIO_setOutputLowOnPin(GPIO_PORT_P1, GPIO_PIN1);
 
     QT_SPI_initialise();
 
@@ -38,11 +47,10 @@ void main(void)
 
     i = 0;
 
+    QT_SPI_setReceiveHandler(handler, 100, &OBC);
+
     while (1) {
         GPIO_toggleOutputOnPin(GPIO_PORT_P1, GPIO_PIN0);
-        //transmit(dataPtr + (i % 26), 1, &DIGIPOT);
-        QT_SPI_transmit(dataPtr, DATA_LENGTH, &DIGIPOT);
-        i++;
-        __delay_cycles(100);
+        __delay_cycles(500000);
     }
 }

@@ -201,10 +201,10 @@ static void setChipSelect(device_t* devicePtr) {
 /**
  * This method sends a single byte to a device. This method sets the isCurrentlySending flag if the device is a slave device.
  */
-static void sendByte(device_t *devicePtr, spi_transmit_func transmitData, const byte *transmitBufferPtr,
+static void sendByte(device_t *devicePtr, spi_transmit_func transmitData, const byte **transmitBufferPtr,
                      const byte *transmitBufferStopPtr) {
 
-    if (transmitBufferPtr == NULL) {
+    if (*transmitBufferPtr == NULL) {
 
         // Have we finished sending to a slave device?
         if (devicePtr->isSlave) {
@@ -214,7 +214,7 @@ static void sendByte(device_t *devicePtr, spi_transmit_func transmitData, const 
     }
 
     // Send the byte
-    (*(transmitData))(devicePtr->spiBaseAddress, *transmitBufferPtr);
+    (*(transmitData))(devicePtr->spiBaseAddress, **transmitBufferPtr);
 
     // Are we sending to a slave device?
     if (devicePtr->isSlave) {
@@ -222,11 +222,11 @@ static void sendByte(device_t *devicePtr, spi_transmit_func transmitData, const 
     }
 
     // Move pointer to the next byte to send
-    transmitBufferPtr++;
+    (*transmitBufferPtr)++;
 
     // Have we finished sending the packet?
-    if (transmitBufferPtr == transmitBufferStopPtr) {
-        transmitBufferPtr = NULL;
+    if (*transmitBufferPtr == transmitBufferStopPtr) {
+        *transmitBufferPtr = NULL;
     }
 }
 
@@ -263,7 +263,7 @@ static void sendNullByteToSlave() {
 /**
  * Receives a byte of data from a device. Runs a receive handler when all data has been received.
  */
-static void receiveByte(device_t *devicePtr, spi_receive_func receiveData, byte *receiveBufferPtr,
+static void receiveByte(device_t *devicePtr, spi_receive_func receiveData, byte **receiveBufferPtr,
                         byte *receiveBufferStartPtr) {
     // Check if receive handler has been set
     if (devicePtr->receiveHandler == NULL) {
@@ -271,19 +271,19 @@ static void receiveByte(device_t *devicePtr, spi_receive_func receiveData, byte 
     }
 
     // Put received byte of data in slave buffer
-    *receiveBufferPtr = (*receiveData)(devicePtr->spiBaseAddress);
+    **receiveBufferPtr = (*receiveData)(devicePtr->spiBaseAddress);
 
     // Move buffer pointer to next byte
-    receiveBufferPtr++;
+    (*receiveBufferPtr)++;
 
     // If the buffer is full
-    if (receiveBufferPtr - receiveBufferStartPtr >= devicePtr->expectedLength) {
+    if (*receiveBufferPtr - receiveBufferStartPtr >= devicePtr->expectedLength) {
 
         // Run the handler
         (*(devicePtr->receiveHandler))(receiveBufferStartPtr);
 
         // Clear the buffer
-        receiveBufferPtr = receiveBufferStartPtr;
+        *receiveBufferPtr = receiveBufferStartPtr;
     }
 }
 
@@ -539,7 +539,7 @@ void USCI_A1_ISR (void)
             case USCI_SPI_UCRXIFG:
 
                 // Receive data from master
-                receiveByte(&OBC, &EUSCI_A_SPI_receiveData, masterReceiveBufferPtr, masterReceiveBuffer);
+                receiveByte(&OBC, &EUSCI_A_SPI_receiveData, &masterReceiveBufferPtr, masterReceiveBuffer);
                 break;
 
             // Transmit data case
@@ -550,7 +550,7 @@ void USCI_A1_ISR (void)
                                                        EUSCI_A_SPI_TRANSMIT_INTERRUPT));
 
                 // Transmit data to master
-                sendByte(&OBC, &EUSCI_A_SPI_transmitData, masterTransmitPtr,
+                sendByte(&OBC, &EUSCI_A_SPI_transmitData, &masterTransmitPtr,
                                      masterTransmitStopPtr);
 
             default:
