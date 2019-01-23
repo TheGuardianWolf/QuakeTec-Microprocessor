@@ -6,16 +6,7 @@
 byte dataPtr[DATA_LENGTH];
 
 void handler(const byte *data) {
-    int i;
-    byte d [100];
-
     GPIO_toggleOutputOnPin(GPIO_PORT_P1, GPIO_PIN1);
-
-    for(i = 0; i < 100; i++) {
-        d[i] = data[i];
-    }
-
-    i = 5;
 }
 
 void main(void)
@@ -47,7 +38,7 @@ void main(void)
 
     i = 0;
 
-    QT_SPI_setReceiveHandler(handler, 100, &OBC);
+    QT_SPI_setReceiveHandler(handler, 3, &OBC);
 
     while (1) {
         GPIO_toggleOutputOnPin(GPIO_PORT_P1, GPIO_PIN0);

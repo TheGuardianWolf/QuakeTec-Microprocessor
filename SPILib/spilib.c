@@ -41,13 +41,13 @@ static byte volatile *volatile slaveReceiveBufferPtr;
 /**
  * Pointer to slave device MPS430 communicating with.
  */
-static device_t volatile *currentSlavePtr;
+static device_t *currentSlavePtr;
 
 /**
  * Whether we are currently listening to the slave.
  */
 static bool volatile isListening;
-static bool volatile isCurrentlySending = false;
+static bool volatile isSendingToSlave = false;
 
 /**
  * Pointer to the next byte to be sent, this will be NULL if there is no data to send
@@ -199,7 +199,7 @@ static void setChipSelect(device_t* devicePtr) {
 }
 
 /**
- * This method sends a single byte to a device. This method sets the isCurrentlySending flag if the device is a slave device.
+ * This method sends a single byte to a device. This method sets the isSendingToSlave flag if the device is a slave device.
  */
 static void sendByte(device_t *devicePtr, spi_transmit_func transmitData, byte const *volatile *transmitBufferPtr,
                      byte const *transmitBufferStopPtr) {
@@ -208,7 +208,7 @@ static void sendByte(device_t *devicePtr, spi_transmit_func transmitData, byte c
 
         // Have we finished sending to a slave device?
         if (devicePtr->isSlave) {
-            isCurrentlySending = false;
+            isSendingToSlave = false;
         }
         return;
     }
@@ -218,7 +218,7 @@ static void sendByte(device_t *devicePtr, spi_transmit_func transmitData, byte c
 
     // Are we sending to a slave device?
     if (devicePtr->isSlave) {
-        isCurrentlySending = true;
+        isSendingToSlave = true;
     }
 
     // Move pointer to the next byte to send
@@ -231,33 +231,13 @@ static void sendByte(device_t *devicePtr, spi_transmit_func transmitData, byte c
 }
 
 /**
- * This method sends a single byte to the slave. This method also sets the isCurrentlySending flag.
- *
- * THIS CALL IS LOCKED WITH THE TO SLAVE CHANNEL
- */
-static void sendByteToSlave() {
-    if (slaveTransmitPtr == NULL) {
-        isCurrentlySending = false;
-        return;
-    }
-
-    EUSCI_B_SPI_transmitData(currentSlavePtr->spiBaseAddress, *slaveTransmitPtr);
-    isCurrentlySending = true;
-    slaveTransmitPtr++;
-
-    if (slaveTransmitPtr == slaveTransmitStopPtr) {
-        slaveTransmitPtr = NULL;
-    }
-}
-
-/**
- * This method sends a single 0 to the slave. This method also sets the isCurrentlySending flag.
+ * This method sends a single 0 to the slave. This method also sets the isSendingToSlave flag.
  *
  * This method is locked by the
  */
 static void sendNullByteToSlave() {
     EUSCI_B_SPI_transmitData(currentSlavePtr->spiBaseAddress, DEFAULT_SEND);
-    isCurrentlySending = true;
+    isSendingToSlave = true;
 }
 
 /**
@@ -386,10 +366,10 @@ bool QT_SPI_transmit(byte const *dataPtr, uint16_t length, device_t *devicePtr) 
         masterTransmitStopPtr = dataPtr + length;
     }
 
-    if (!isCurrentlySending) {
+    if (!isSendingToSlave) {
 
         // Start interrupts
-        sendByteToSlave();
+        sendByte(currentSlavePtr, &EUSCI_B_SPI_transmitData, &slaveTransmitPtr, slaveTransmitStopPtr);
     }
 
     enableInterrupts(devicePtr);
@@ -437,7 +417,7 @@ void QT_SPI_listenToSlave(device_t *devicePtr) {
 
     isListening = true;
 
-    if (!isCurrentlySending) {
+    if (!isSendingToSlave) {
         sendNullByteToSlave();
     }
 
@@ -477,29 +457,11 @@ __interrupt void USCI_B1_ISR(void)
     // Receive data case
     case USCI_SPI_UCRXIFG:
 
-        // Check if receive handler has been set
-        if (currentSlavePtr == NULL || currentSlavePtr->receiveHandler == NULL) {
+        // Check if we're pointing to a slave
+        if (currentSlavePtr == NULL) {
             break;
         }
-
-        // Put received byte of data in slave buffer
-        *slaveReceiveBufferPtr = EUSCI_B_SPI_receiveData(currentSlavePtr->spiBaseAddress);
-
-        // Move buffer pointer to next byte
-        slaveReceiveBufferPtr++;
-
-        // If the buffer is full
-        if (slaveReceiveBufferPtr - slaveReceiveBuffer >= currentSlavePtr->expectedLength) {
-
-            // Run the handler
-            isInInterrupt = true;
-            (*(currentSlavePtr->receiveHandler))((byte const *) slaveReceiveBuffer);
-            isInInterrupt = false;
-
-            // Clear the buffer
-            slaveReceiveBufferPtr = slaveReceiveBuffer;
-        }
-
+        receiveByte(currentSlavePtr, &EUSCI_B_SPI_receiveData, &slaveReceiveBufferPtr, slaveReceiveBuffer);
         break;
 
         // Transmit data case
@@ -510,12 +472,16 @@ __interrupt void USCI_B1_ISR(void)
                 if (isListening) {
                     sendNullByteToSlave();
                 } else {
-                    isCurrentlySending = false;
+                    isSendingToSlave = false;
                     setChipSelect(NULL);
                 }
             } else {
                 // If we have data to send, send it.
-                sendByteToSlave();
+                if (slaveTransmitPtr == NULL) {
+                    isSendingToSlave = false;
+                    return;
+                }
+                sendByte(currentSlavePtr, &EUSCI_B_SPI_transmitData, &slaveTransmitPtr, slaveTransmitStopPtr);
             }
         }
 
@@ -547,6 +513,7 @@ void USCI_A1_ISR (void)
 
                 // Transmit data to master
                 sendByte(&OBC, &EUSCI_A_SPI_transmitData, &masterTransmitPtr, masterTransmitStopPtr);
+                break;
 
             default:
                 break;
