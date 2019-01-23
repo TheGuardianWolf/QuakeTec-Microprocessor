@@ -29,41 +29,41 @@ device_t DIGIPOT = { true, EUSCI_B1_BASE, NULL, 0, GPIO_PORT_P2, GPIO_PIN6 };
 /**
  * Buffers to hold data before data is ready to send to receive handler
  */
-static byte masterReceiveBuffer [BUFFER_LENGTH];
-static byte slaveReceiveBuffer [BUFFER_LENGTH];
+static byte volatile masterReceiveBuffer [BUFFER_LENGTH];
+static byte volatile slaveReceiveBuffer [BUFFER_LENGTH];
 
 /**
  * Pointers to next available byte in the buffer. If buffer is full, pointer will point to byte 256.
  */
-static byte *masterReceiveBufferPtr;
-static byte *slaveReceiveBufferPtr;
+static byte volatile *volatile masterReceiveBufferPtr;
+static byte volatile *volatile slaveReceiveBufferPtr;
 
 /**
  * Pointer to slave device MPS430 communicating with.
  */
-static device_t *currentSlavePtr;
+static device_t volatile *currentSlavePtr;
 
 /**
  * Whether we are currently listening to the slave.
  */
-static bool isListening;
-static bool isCurrentlySending = false;
+static bool volatile isListening;
+static bool volatile isCurrentlySending = false;
 
 /**
  * Pointer to the next byte to be sent, this will be NULL if there is no data to send
  */
-static const byte *masterTransmitPtr;
-static const byte *slaveTransmitPtr;
+static byte const *volatile masterTransmitPtr;
+static byte const *volatile slaveTransmitPtr;
 
 /**
  * A flag to make sure that interrupts do not get disabled inside of interrupts
  */
-static bool isInInterrupt = false;
+static volatile bool isInInterrupt = false;
 
 /**
  * Pointers one past the last byte to be sent
  */
-static const byte *masterTransmitStopPtr, *slaveTransmitStopPtr;
+static byte const *masterTransmitStopPtr, *slaveTransmitStopPtr;
 
 /*
  * Private functions
@@ -201,8 +201,8 @@ static void setChipSelect(device_t* devicePtr) {
 /**
  * This method sends a single byte to a device. This method sets the isCurrentlySending flag if the device is a slave device.
  */
-static void sendByte(device_t *devicePtr, spi_transmit_func transmitData, const byte **transmitBufferPtr,
-                     const byte *transmitBufferStopPtr) {
+static void sendByte(device_t *devicePtr, spi_transmit_func transmitData, byte const *volatile *transmitBufferPtr,
+                     byte const *transmitBufferStopPtr) {
 
     if (*transmitBufferPtr == NULL) {
 
@@ -263,8 +263,8 @@ static void sendNullByteToSlave() {
 /**
  * Receives a byte of data from a device. Runs a receive handler when all data has been received.
  */
-static void receiveByte(device_t *devicePtr, spi_receive_func receiveData, byte **receiveBufferPtr,
-                        byte *receiveBufferStartPtr) {
+static void receiveByte(device_t *devicePtr, spi_receive_func receiveData, byte volatile *volatile *receiveBufferPtr,
+                        byte volatile *receiveBufferStartPtr) {
     // Check if receive handler has been set
     if (devicePtr->receiveHandler == NULL) {
         return;
@@ -280,7 +280,7 @@ static void receiveByte(device_t *devicePtr, spi_receive_func receiveData, byte 
     if (*receiveBufferPtr - receiveBufferStartPtr >= devicePtr->expectedLength) {
 
         // Run the handler
-        (*(devicePtr->receiveHandler))(receiveBufferStartPtr);
+        (*(devicePtr->receiveHandler))((byte const *) receiveBufferStartPtr);
 
         // Clear the buffer
         *receiveBufferPtr = receiveBufferStartPtr;
@@ -348,7 +348,7 @@ void QT_SPI_initialise() {
  *
  * THIS METHOD CAN BE INTERLEIVED WITH ANY INTERRUPT
  */
-bool QT_SPI_transmit(const byte *dataPtr, uint16_t length, device_t *devicePtr) {
+bool QT_SPI_transmit(byte const *dataPtr, uint16_t length, device_t *devicePtr) {
 
     disableInterrupts(devicePtr);
 
@@ -493,7 +493,7 @@ __interrupt void USCI_B1_ISR(void)
 
             // Run the handler
             isInInterrupt = true;
-            (*(currentSlavePtr->receiveHandler))(slaveReceiveBuffer);
+            (*(currentSlavePtr->receiveHandler))((byte const *) slaveReceiveBuffer);
             isInInterrupt = false;
 
             // Clear the buffer
@@ -545,13 +545,8 @@ void USCI_A1_ISR (void)
             // Transmit data case
             case USCI_SPI_UCTXIFG:
 
-                // Wait until the transmit buffer is ready
-                while (!EUSCI_A_SPI_getInterruptStatus(OBC.spiBaseAddress,
-                                                       EUSCI_A_SPI_TRANSMIT_INTERRUPT));
-
                 // Transmit data to master
-                sendByte(&OBC, &EUSCI_A_SPI_transmitData, &masterTransmitPtr,
-                                     masterTransmitStopPtr);
+                sendByte(&OBC, &EUSCI_A_SPI_transmitData, &masterTransmitPtr, masterTransmitStopPtr);
 
             default:
                 break;
