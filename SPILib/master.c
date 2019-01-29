@@ -5,8 +5,8 @@
 
 byte dataPtr[DATA_LENGTH];
 
-void handler(const byte *data) {
-    GPIO_toggleOutputOnPin(GPIO_PORT_P1, GPIO_PIN1);
+void handler(bool success) {
+    QT_SPI_transmit(dataPtr, DATA_LENGTH, &ADC, handler);
 }
 
 void main(void)
@@ -14,8 +14,7 @@ void main(void)
     int i;
 
     for(i = 0; i < DATA_LENGTH; i++) {
-        //dataPtr[i] = (byte) ('A' + (i % 26));
-        dataPtr[i] = (byte) 0b1001001;
+        dataPtr[i] = (byte) ('A' + (i % 26));
     }
 
     // Stop watchdog timer
@@ -38,10 +37,7 @@ void main(void)
 
     i = 0;
 
-    QT_SPI_setReceiveHandler(handler, 3, &OBC);
+    QT_SPI_transmit(dataPtr, DATA_LENGTH, &ADC, handler);
 
-    while (1) {
-        GPIO_toggleOutputOnPin(GPIO_PORT_P1, GPIO_PIN0);
-        __delay_cycles(500000);
-    }
+    while(1) {  }
 }
