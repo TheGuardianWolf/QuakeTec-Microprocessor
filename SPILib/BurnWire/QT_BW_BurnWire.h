@@ -4,16 +4,12 @@
 /*
  * Includes
  */
-#include <Common/QT_Common.h>
+
 
 /*
  * Type definitions
  */
 
-typedef struct {
-    uint8_t contactSwitchPort, contactSwitchPin;
-    uint8_t burnWirePort, burnWirePin;
-} probe_t;
 
 /**
  * Variable declarations

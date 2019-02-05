@@ -10,6 +10,11 @@
 #include <stddef.h>
 
 /*
+ * Defines
+ */
+#define QT_COM_CLK_FREQUENCY 1000000 // TODO increase
+
+/*
  * Type definitions
  */
 typedef unsigned char byte;
