@@ -6,10 +6,10 @@
  */
 
 #define CURRENT_OFFSET 0.0
-#define CURRENT_SCALE (1.0 / 1023.0);
+#define CURRENT_SCALE (1.0 / 1023.0)
 
 #define TEMP_OFFSET 0.0
-#define TEMP_SCALE (1.0 / 1023.0);
+#define TEMP_SCALE (1.0 / 1023.0)
 
 #include "QT_adc.h"
 #include "driverlib.h"
