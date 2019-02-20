@@ -4,7 +4,7 @@
 /*
  * Includes
  */
-#include <Common/QT_Common.h>
+#include "Common/QT_COM_common.h"
 
 /*
  * Type definitions

@@ -1,8 +1,8 @@
 /*
  * Includes
  */
-#include <BurnWire/QT_BW_BurnWire.h>
-#include "../Common/QT_COM_Common.h"
+#include "BurnWire/QT_BW_BurnWire.h"
+#include "Common/QT_COM_common.h"
 
 /*
  * Defines
