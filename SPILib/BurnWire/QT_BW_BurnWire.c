@@ -2,12 +2,13 @@
  * Includes
  */
 #include "BurnWire/QT_BW_BurnWire.h"
+#include "InternalADC/QT_adc.h"
 #include "Common/QT_COM_common.h"
 
 /*
  * Defines
  */
-#define TEMP_LIMIT 40 // TODO get the temperature limit
+#define TEMP_LIMIT 40.0 // TODO get the temperature limit
 #define START_DUTY 0.3 // TODO get real duty
 #define START_BURN_LENGTH 4 // TODO get real burn length (s)
 #define START_PWM 5 // TODO get real PWM - duty cycle frequency (Hz)
@@ -49,8 +50,7 @@ static bool isInContact(probe_t *probe) {
  * and it is therefore safe for the probes to be deployed. Returns false otherwise.
  */
 static bool temperatureIsSafe() {
-    // TODO call James's ADC module to retrieve temperature. Compare to TEMP_LIMIT
-    return true;
+    return QT_ADC_readTemperature() < TEMP_LIMIT;
 }
 
 /**

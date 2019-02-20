@@ -9,15 +9,13 @@
 /*
  * Type definitions
  */
-typedef void(*handler_func)(const byte *);
-
-typedef byte(*spi_receive_func)(uint16_t);
-typedef void(*spi_transmit_func)(uint16_t, uint8_t);
+typedef void(*receive_handler_func)(const byte * data);
+typedef void(*transmit_handler_func)(bool succeeded);
 
 typedef struct {
     bool isSlave;
     uint16_t spiBaseAddress;
-    handler_func receiveHandler;
+    receive_handler_func receiveHandler;
     byte expectedLength;
 
     // CS storage
@@ -43,13 +41,14 @@ void QT_SPI_initialise();
 
 /**
  * Returns immediately. Returns true if the system was ready to send data. If it returns false the data was not sent.
+ * The callback will be called by the interrupt handler when the transmission has finished. If the callback is NULL nothing occurs
  */
-bool QT_SPI_transmit(const byte *dataPtr, uint16_t length, device_t *device);
+bool QT_SPI_transmit(const byte *dataPtr, uint16_t length, device_t *device, transmit_handler_func callback);
 
 /**
  * Registers a function that handles incoming data. This will be called when length bytes have been recevied.
  */
-void QT_SPI_setReceiveHandler(handler_func handler, byte length, device_t *device);
+void QT_SPI_setReceiveHandler(receive_handler_func handler, byte length, device_t *device);
 
 /**
  * Starts clocking data in from the slave and sets the CS line. This will cause the handler to be called.
