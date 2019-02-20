@@ -8,7 +8,7 @@
 #include <stdlib.h>
 
 #include "driverlib.h"
-#include "spilib.h"
+#include "SpiLib/QT_SPI_SpiLib.h"
 
 static uint16_t registerValue;
 
@@ -41,7 +41,7 @@ static void syncRegister() {
     // We need to make this so the method does not block for extended periods of time.
 
     setReady(true);
-    while(!QT_SPI_transmit((byte *) &registerValue, 2, &DIGIPOT));
+    while(!QT_SPI_transmit((byte *) &registerValue, 2, &DIGIPOT, NULL));
     while(!QT_SPI_isDataSent());
     setReady(false);
 }

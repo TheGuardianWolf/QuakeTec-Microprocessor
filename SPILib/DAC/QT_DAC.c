@@ -5,7 +5,7 @@
  *      Author: james
  */
 
-#include "spilib.h"
+#include "SpiLib/QT_SPI_SpiLib.h"
 
 static uint16_t data;
 
@@ -16,5 +16,5 @@ static uint16_t data;
  **/
 void QT_DAC_setOutputValue(uint16_t value) {
     data = value;
-    while(!QT_SPI_transmit((byte *) &data, 2, &DAC));
+    while(!QT_SPI_transmit((byte *) &data, 2, &DAC, NULL));
 }
