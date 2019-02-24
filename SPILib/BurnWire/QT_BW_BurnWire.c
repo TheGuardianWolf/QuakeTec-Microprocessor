@@ -1,8 +1,8 @@
 /*
  * Includes
  */
+#include <InternalADC/QT_adc_internal.h>
 #include "BurnWire/QT_BW_BurnWire.h"
-#include "InternalADC/QT_adc.h"
 #include "Common/QT_COM_common.h"
 
 /*
@@ -50,7 +50,7 @@ static bool isInContact(probe_t *probe) {
  * and it is therefore safe for the probes to be deployed. Returns false otherwise.
  */
 static bool temperatureIsSafe() {
-    return QT_ADC_readTemperature() < TEMP_LIMIT;
+    return QT_IADC_readTemperature() < TEMP_LIMIT;
 }
 
 /**

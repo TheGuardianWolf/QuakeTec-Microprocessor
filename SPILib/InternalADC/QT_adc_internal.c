@@ -17,13 +17,13 @@
 #define TEMP_RESISTOR_SCALE 6.25
 #define TEMP_RESISTOR_OFFSET 1000
 
-#include "QT_adc.h"
+#include <InternalADC/QT_adc_internal.h>
 #include "driverlib.h"
 
 static volatile int16_t result = 0;
 static volatile bool readCompleted = true;
 
-void QT_ADC_initialise() {
+void QT_IADC_initialise() {
     //Set A9 as an input pin.
     //Set A8 as an input pin.
     //Set appropriate module function
@@ -71,7 +71,7 @@ void QT_ADC_initialise() {
 /**
  * This function reads the temperature of the PCB in C, this function will block for a small amount of time while the tempurature is read (16 cycles)
  */
-float QT_ADC_readTemperature() {
+float QT_IADC_readTemperature() {
     // Ensure that there is not a read running
     while(!readCompleted) {  }
 
@@ -101,7 +101,7 @@ float QT_ADC_readTemperature() {
 /**
  * This function reads the battery current, this function will block for a small amount of time while the current is read (16 cycles)
  */
-float QT_ADC_readCurrent() {
+float QT_IADC_readCurrent() {
     // Ensure that there is not a read running
     while(!readCompleted) {  }
 

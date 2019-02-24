@@ -11,16 +11,16 @@
 /**
  * Initialise the MC ADCs
  */
-void QT_ADC_initialise();
+void QT_IADC_initialise();
 
 /**
  * This function reads the temperature of the PCB, this function may block if the temperature reading is not ready yet.
  */
-float QT_ADC_readTemperature();
+float QT_IADC_readTemperature();
 
 /**
  * This function reads the battery current in A, this function will block for a small amount of time while the current is read (16 cycles)
  */
-float QT_ADC_readCurrent();
+float QT_IADC_readCurrent();
 
 #endif /* QT_ADC_H_ */

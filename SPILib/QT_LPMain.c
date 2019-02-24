@@ -1,8 +1,8 @@
+#include <InternalADC/QT_adc_internal.h>
 #include "driverlib.h"
 
 #include "SpiLib/QT_SPI_Protocol.h"
 #include "SpiLib/QT_SPI_SpiLib.h"
-#include "InternalADC/QT_adc.h"
 #include "QT_LPMain.h"
 
 #define EVENT_QUEUE_LENGTH 256
@@ -39,7 +39,7 @@ void initialise() {
     GPIO_setAsOutputPin(GPIO_PORT_P1, GPIO_PIN1);
     GPIO_setOutputLowOnPin(GPIO_PORT_P1, GPIO_PIN1);
 
-    QT_ADC_initialise();
+    QT_IADC_initialise();
     QT_SPI_initialise();
 
     // Disable the GPIO power-on default high-impedance mode
