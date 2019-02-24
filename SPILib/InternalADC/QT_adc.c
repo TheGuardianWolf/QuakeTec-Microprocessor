@@ -8,8 +8,14 @@
 #define CURRENT_OFFSET 0.0
 #define CURRENT_SCALE (1.0 / 1023.0)
 
-#define TEMP_OFFSET 0.0
-#define TEMP_SCALE (1.0 / 1023.0)
+#define TEMP_R1 56000.0
+#define TEMP_R2 56000.0
+#define TEMP_R3 732.0
+#define TEMP_R4 30000.0
+
+#define TEMP_FINAL_SCALE 4096.0
+#define TEMP_RESISTOR_SCALE 6.25
+#define TEMP_RESISTOR_OFFSET 1000
 
 #include "QT_adc.h"
 #include "driverlib.h"
@@ -80,7 +86,16 @@ float QT_ADC_readTemperature() {
 
     while(!readCompleted) {  }
 
-    return (result + TEMP_OFFSET) * TEMP_SCALE;
+    // Equation from LP control docs. k is the constant offset in the equation
+    // while m is the complicated multicand.
+    float k = TEMP_R4 / TEMP_R2;
+    float m = TEMP_R4 * (1.0 / TEMP_R3 + 1.0 / TEMP_R2) + 1.0;
+
+    float x = (k - result / TEMP_FINAL_SCALE) / m;
+
+    float RT = TEMP_R1 * x / (1 - x);
+
+    return (RT - TEMP_RESISTOR_OFFSET) / TEMP_RESISTOR_SCALE;
 }
 
 /**
