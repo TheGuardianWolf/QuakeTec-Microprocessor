@@ -19,7 +19,7 @@ void QT_FRAM_write(uint16_t data);
 void QT_FRAM_reset();
 
 /** Returns a pointer to the data. */
-uint16_t QT_FRAM_dataPtr();
+uint16_t *QT_FRAM_dataPtr();
 
 /** Gets the distance between the readhead and the writehead. */
 int QT_FRAM_length();

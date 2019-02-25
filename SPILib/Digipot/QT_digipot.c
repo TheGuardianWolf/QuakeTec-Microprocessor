@@ -12,16 +12,14 @@
 
 static uint16_t registerValue;
 
-// These variables control the shifting of data into the digipot register
-// reg = reg & ~MASK | ((data << SHIFT) & MASK)
-
-#define CONTROL_MASK 0x3c00
 #define CONTROL_SHIFT 10
-
-#define DATA_MASK 0x3ff
 
 #define DIGIPOT_RDY_PORT GPIO_PORT_P2
 #define DIGIPOT_RDY_PIN GPIO_PIN7
+
+#define DIGIPOT_MAX_DATA 1024.0
+#define DIGIPOT_SCALE (9900.0 / 20000.0 * DIGIPOT_MAX_DATA)
+#define DIGIPOT_WRITE_COMMAND 1
 
 static void setReady(bool high) {
     if (high) {
@@ -46,26 +44,17 @@ static void syncRegister() {
     setReady(false);
 }
 
-/**
- * This sets the control bits for the Digipot. If data is not ready to send this
- * method will block until the data starts to send.
- *
- * Only the lower 4 bits of data will be sent.
- */
-void QT_DIGIPOT_setControlBits(uint8_t controlBits) {
-    registerValue &= ~CONTROL_MASK;
-    registerValue |= (controlBits << CONTROL_SHIFT) & CONTROL_MASK;
+void QT_DIGIPOT_setGain(float gain) {
+    uint16_t data = (uint16_t) (DIGIPOT_SCALE / (gain - 1.0));
 
-    syncRegister();
-}
+    if(data >= DIGIPOT_MAX_DATA) {
+        data = DIGIPOT_MAX_DATA - 1;
+    } else if(data < 0) {
+        data = 0;
+    }
 
-/**
- * This sets the data bits for the Digipot. If data is not ready to send this
- * method will block until the data starts to send.
- */
-void QT_DIGIPOT_setDataBits(uint8_t dataBits) {
-    registerValue &= ~DATA_MASK;
-    registerValue |= dataBits & DATA_MASK;
+    uint8_t control = DIGIPOT_WRITE_COMMAND;
 
+    registerValue = data | (control << CONTROL_SHIFT);
     syncRegister();
 }

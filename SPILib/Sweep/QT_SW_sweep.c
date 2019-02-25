@@ -6,9 +6,8 @@
 /*
  * Defines
  */
-#define DIGIPOT_INITIAL_RESISTANCE 9800
-#define DIGIPOT_MAX_RESISTANCE 20000
-#define DIGIPOT_GAIN_FACTOR 9900
+
+#define INITIAL_GAIN 2.0
 
 #define VOLTAGE_MULTIPLE 1000
 #define DAC_MIN_VOLTAGE (0 * VOLTAGE_MULTIPLE)
@@ -20,9 +19,6 @@
 #define NUM_VALUES_10_BITS 1024
 #define MAX_VALUE_16_BITS 65535
 
-#define DIGIPOT_WRITE_COMMAND 0b0001
-#define SWEEP_DATA_NUM_2BYTES_PADDING 1
-
 #define SWEEP_RESOLUTION_DIVISOR 1
 #define PRESWEEP_RESOLUTION_DIVISOR 8
 
@@ -33,41 +29,9 @@
  * Type definitions
  */
 
-/**
- * Information about voltages retrieved from the sweep private to this sweep module
- */
-typedef struct {
-    uint16_t voltages [SWEEP_DATA_BUFFER_SIZE];
-    uint16_t **positionPtr;
-} sweep_voltages_t;
-
-/**
- * All information about a sweep - public and private
- */
-typedef struct {
-    sweep_voltages_t sweepVoltages;
-    sweep_data_t sweepData;
-} sweep_t;
-
 /*
  * Private variables
  */
-static sweep_settings_t sweepSettings = {0};
-
-static sweep_t sweep1 = {
-                         {NULL,
-                          &(sweep1.sweepVoltages.voltages) + SWEEP_DATA_NUM_2BYTES_PADDING},
-                         {&(sweep1.sweepVoltages.voltages) + SWEEP_DATA_NUM_2BYTES_PADDING,
-                          SWEEP_DATA_BUFFER_SIZE}
-};
-static sweep_t sweep2 = {
-                         {NULL,
-                          &(sweep2.sweepVoltages.voltages) + SWEEP_DATA_NUM_2BYTES_PADDING},
-                         {&(sweep2.sweepVoltages.voltages) + SWEEP_DATA_NUM_2BYTES_PADDING,
-                          SWEEP_DATA_BUFFER_SIZE}
-};
-static sweep_t *currentSweepPtr = &sweep1;
-static sweep_t *nonCurrentSweepPtr = &sweep2;
 
 /*
  * Private functions
@@ -101,21 +65,6 @@ static uint16_t convertToAdcVoltage(uint16_t voltage) {
  */
 static uint16_t convertFromAdcVoltage(uint16_t voltage) {
     return voltage; // TODO
-}
-
-/**
- * Converts resistance used internally by the MCU into a resistance for the DigiPot.
- */
-static uint16_t convertToDigiPotResistance(uint16_t resistance) {
-    return (uint16_t) (resistance * NUM_VALUES_10_BITS / DIGIPOT_MAX_RESISTANCE);
-}
-
-/**
- * Sets the DigiPot to a given resistance.
- */
-static void setDigiPotResistance(uint16_t resistance) {
-    //QT_DIGIPOT_setControlBits(DIGIPOT_WRITE_COMMAND); // TODO uncomment
-    //QT_DIGIPOT_setDataBits(convertToDigiPotResistance(resistance)); // TODO uncomment
 }
 
 // TODO move the following functions (max and min) into common module
@@ -153,22 +102,26 @@ static uint16_t min(uint16_t values [], uint16_t length) {
 }
 
 /**
+ * Create the default settings object.
+ */
+static sweep_settings_t createDefaultSettings() {
+    sweep_settings_t settings;
+    settings.digiPotGain = INITIAL_GAIN;
+    settings.maxDacVoltage = DAC_MIN_VOLTAGE;
+    settings.minDacVoltage = DAC_MAX_VOLTAGE;
+
+    return settings;
+}
+
+/**
  * Sets initial values of DigiPot and DAC.
  */
-static void initialiseDigiPotAndDac() {
-
-    // Setup starting DigiPot resistance
-    sweepSettings.digiPotResistance = DIGIPOT_INITIAL_RESISTANCE;
-
+static void initialiseDigiPotAndDac(sweep_settings_t settings) {
     // Set resistance on DigiPot
-    setDigiPotResistance(sweepSettings.digiPotResistance);
-
-    // Setup starting DAC voltage
-    sweepSettings.minDacVoltage = DAC_MIN_VOLTAGE;
-    sweepSettings.maxDacVoltage = DAC_MAX_VOLTAGE;
+    QT_DIGIPOT_setGain(settings.digiPotGain);
 
     // Set starting voltage on DAC
-    //QT_DAC_setOutputValue(dacVoltage);
+    QT_DAC_setOutputValue(settings.minDacVoltage);
 }
 
 // TODO check exit flags before doing stuff
@@ -310,8 +263,10 @@ static void setPreSweepDacLimits() {
 void QT_SW_conductPreSweep() {
     // TODO health checks
 
+    sweep_settings_t settings = createDefaultSettings();
+
     // Set up starting DigiPot and DAC values
-    initialiseDigiPotAndDac();
+    initialiseDigiPotAndDac(settings);
 
     // TODO find DAC offset
 
@@ -331,14 +286,16 @@ sweep_settings_t QT_SW_retrieveSweepSettings() {
 }
 
 /**
- * Puts the pre-sweep into a safe state and stops.
+ * Puts the sweep into a safe state.
  */
-void QT_SW_stopPreSweep();
+static void placeSweepInSafeState() {
+    // TODO
+}
 
 /**
  * Conducts a sweep. When sweep data is available, conductSweep() tells the OBC by calling QT_LP_signalSweepDataReady().
  */
-void QT_SW_conductSweep() {
+sweep_data_t QT_SW_conductSweep(sweep_settings_t settings) {
 
     uint16_t startDacVoltage = sweepSettings.minDacVoltage;
     int i;
@@ -355,30 +312,3 @@ void QT_SW_conductSweep() {
         // QT_LP_signalSweepDataReady(); TODO uncomment
     }
 }
-
-/**
- * Returns a pointer to a sweep_data_t struct containing voltages retrieved from a sweep.
- */
-sweep_data_t* QT_SW_retrieveSweepData() {
-
-    // Switch the sweep to build up
-    sweep_t *tempSweepPtr = currentSweepPtr;
-    currentSweepPtr = nonCurrentSweepPtr;
-    nonCurrentSweepPtr = tempSweepPtr;
-
-    // The previously requested sweep data has already been processed - allow it to be overwritten
-    currentSweepPtr->sweepVoltages.positionPtr = &(sweep1.sweepVoltages.voltages) + SWEEP_DATA_NUM_2BYTES_PADDING;
-
-    return &(nonCurrentSweepPtr->sweepData);
-}
-
-/**
- * Puts the sweep into a safe state and stops.
- */
-void QT_SW_stopSweep();
-
-/*
- * Interrupts
- */
-
-

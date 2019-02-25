@@ -4,10 +4,9 @@
 #define FRAM_INDEX_START (FRAM_START + (uint16_t *) 8192)
 
 static uint16_t *writeHead = FRAM_INDEX_START;
-static uint16_t *readHead = FRAM_INDEX_START;
 
 void QT_FRAM_initialise() {
-    FRAMCtl_enableInterrupt(FRAMCTL_CORRECTABLE_BIT_INTERRUPT | FRAMCTL_UNCORRECTABLE_BIT_INTERRUPT);
+    //FRAMCtl_enableInterrupt(FRAMCTL_CORRECTABLE_BIT_INTERRUPT | FRAMCTL_UNCORRECTABLE_BIT_INTERRUPT);
 }
 
 /** Writes a single value to FRAM at writehead and increments the writehead. */
@@ -18,11 +17,10 @@ void QT_FRAM_write(uint16_t data) {
 /** Readys the FRAM buffer for writing. */
 void QT_FRAM_reset() {
     writeHead = FRAM_INDEX_START;
-    readHead = FRAM_INDEX_START;
 }
 
 /** Returns a pointer to the data. */
-uint16_t QT_FRAM_dataPtr() {
+uint16_t *QT_FRAM_dataPtr() {
     return FRAM_INDEX_START;
 }
 

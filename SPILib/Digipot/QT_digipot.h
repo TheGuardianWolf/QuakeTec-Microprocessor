@@ -10,14 +10,8 @@
 
 /**
  * This sets the control bits for the Digipot. If data is not ready to send this
- * method will block until the data starts to send.
+ * method will block until the digipot is idle.
  */
-void QT_DIGIPOT_setControlBits();
-
-/**
- * This sets the data bits for the Digipot. If data is not ready to send this
- * method will block until the data starts to send.
- */
-void QT_DIGIPOT_setDataBits();
+void QT_DIGIPOT_setGain(float gain);
 
 #endif /* QT_DIGIPOT_H_ */
