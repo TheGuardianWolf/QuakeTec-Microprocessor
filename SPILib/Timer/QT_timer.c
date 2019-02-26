@@ -19,24 +19,24 @@ static volatile uint16_t overflowsRemaining = 0;
 // The timer length in clock cycles
 #define TIMER_LENGTH 10000
 
-void QT_TIMER_initialize() {
+void QT_TIMER_initialise() {
     //Start timer
     Timer_B_initUpModeParam param = {0};
     param.clockSource = TIMER_B_CLOCKSOURCE_SMCLK;
     param.clockSourceDivider = TIMER_B_CLOCKSOURCE_DIVIDER_1;
-    param.timerPeriod = 10000;
+    param.timerPeriod = 11500;
     param.timerInterruptEnable_TBIE = TIMER_B_TBIE_INTERRUPT_ENABLE;
     param.captureCompareInterruptEnable_CCR0_CCIE = TIMER_B_CCIE_CCR0_INTERRUPT_DISABLE;
     param.timerClear = TIMER_B_DO_CLEAR;
     param.startTimer = false;
-    Timer_B_initUpMode(TIMER_B0_BASE, &param);
+    //Timer_B_initUpMode(TIMER_B0_BASE, &param);
 
     Timer_B_initUpModeParam paramTimerB1 = {0};
     paramTimerB1.clockSource = TIMER_B_CLOCKSOURCE_SMCLK;
     paramTimerB1.clockSourceDivider = TIMER_B_CLOCKSOURCE_DIVIDER_1;
-    paramTimerB1.timerPeriod = 10000;
+    paramTimerB1.timerPeriod = 5000;
     paramTimerB1.timerInterruptEnable_TBIE = TIMER_B_TBIE_INTERRUPT_DISABLE;
-    paramTimerB1.captureCompareInterruptEnable_CCR0_CCIE = TIMER_B_CCIE_CCR0_INTERRUPT_ENABLE;
+    paramTimerB1.captureCompareInterruptEnable_CCR0_CCIE = TIMER_B_CCIE_CCR0_INTERRUPT_DISABLE;
     paramTimerB1.timerClear = TIMER_B_DO_CLEAR;
     paramTimerB1.startTimer = true;
     Timer_B_initUpMode(TIMER_B1_BASE, &paramTimerB1);
@@ -47,15 +47,15 @@ void QT_TIMER_initialize() {
     param1.compareInterruptEnable = TIMER_B_CAPTURECOMPARE_INTERRUPT_ENABLE;
     param1.compareOutputMode = TIMER_B_OUTPUTMODE_OUTBITVALUE;
     param1.compareValue = 0;
-    Timer_B_initCompareMode(TIMER_B0_BASE, &param1);
+    //Timer_B_initCompareMode(TIMER_B0_BASE, &param1);
 
     param1.compareRegister = TIMER_B_CAPTURECOMPARE_REGISTER_2;
     param1.compareInterruptEnable = TIMER_B_CAPTURECOMPARE_INTERRUPT_ENABLE;
     param1.compareOutputMode = TIMER_B_OUTPUTMODE_OUTBITVALUE;
     param1.compareValue = 0;
-    Timer_B_initCompareMode(TIMER_B0_BASE, &param1);
+    //Timer_B_initCompareMode(TIMER_B0_BASE, &param1);
 
-    Timer_B_startCounter(TIMER_B0_BASE, TIMER_B_UP_MODE);
+    //Timer_B_startCounter(TIMER_B0_BASE, TIMER_B_UP_MODE);
 }
 
 void QT_TIMER_startPWM(float duty, task_func turnOn, task_func turnOff) {
@@ -87,10 +87,10 @@ void QT_TIMER_sleep(uint16_t micros) {
 }
 
 void QT_TIMER_startPeriodicTask(task_func task, uint16_t micros) {
-    uint16_t clocks = (uint16_t) (micros * CS_getMCLK() / 1000000);
+    // uint16_t clocks = (uint16_t) (micros * CS_getMCLK() / 1000000);
 
-    Timer_B_selectCounterLength(TIMER_B1_BASE, clocks);
-    Timer_B_clear(TIMER_B1_BASE);
+    // Timer_B_selectCounterLength(TIMER_B1_BASE, clocks);
+    // Timer_B_clear(TIMER_B1_BASE);
     periodicTask = task;
 }
 
@@ -129,7 +129,7 @@ void TIMERB0_ISR (void)
     }
 }
 
-#pragma vector=TIMERB0_VECTOR
+#pragma vector=TIMERB1_VECTOR
 __interrupt
 void TIMERB1_ISR (void)
 {

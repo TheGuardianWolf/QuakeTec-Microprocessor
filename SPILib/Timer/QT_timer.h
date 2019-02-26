@@ -12,6 +12,8 @@
 
 typedef void (*task_func)();
 
+void QT_TIMER_initialise();
+
 void QT_TIMER_startPWM(float duty, task_func turnOn, task_func turnOff);
 void QT_TIMER_stopPWM();
 

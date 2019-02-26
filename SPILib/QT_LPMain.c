@@ -5,6 +5,8 @@
 #include "SpiLib/QT_SPI_SpiLib.h"
 #include "QT_LPMain.h"
 
+#include "Timer/QT_timer.h"
+
 #define EVENT_QUEUE_LENGTH 256
 #define EVENT_QUEUE_HEADER_LENGTH 2
 
@@ -41,6 +43,7 @@ void initialise() {
 
     QT_IADC_initialise();
     QT_SPI_initialise();
+    QT_TIMER_initialise();
 
     // Disable the GPIO power-on default high-impedance mode
     // to activate previously configured port settings
@@ -156,6 +159,10 @@ void startListening() {
     QT_SPI_setReceiveHandler(obcIncommingHandler, 2, &OBC);
 }
 
+void toggleLED() {
+    GPIO_toggleOutputOnPin(GPIO_PIN0, GPIO_PORT_P1);
+}
+
 /*
  * This file handles the communication with the OBC, this is the main event loop that handles
  */
@@ -163,6 +170,8 @@ void main(void) {
     initialise();
 
     startListening();
+
+    QT_TIMER_startPeriodicTask(toggleLED, 50);
 
     while(true) {
         // Wait until a command has been queued

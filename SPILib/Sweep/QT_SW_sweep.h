@@ -36,6 +36,6 @@ sweep_settings_t QT_SW_conductPreSweep();
 /**
  * Conducts a sweep. When sweep data is available, conductSweep() tells the OBC by calling QT_LP_signalSweepDataReady().
  */
-sweep_t QT_SW_conductSweep(sweep_settings_t settings);
+sweep_data_t QT_SW_conductSweep(sweep_settings_t settings);
 
 #endif /* QT_SW_SWEEP_H_ */
