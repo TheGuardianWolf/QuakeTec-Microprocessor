@@ -12,7 +12,7 @@
 #include "QT_adc_external.h"
 #include "SpiLib/QT_SPI_SpiLib.h"
 
-static adc_read_func currentCallback = NULL;
+static adc_read_func_t currentCallback = NULL;
 static byte adcCode;
 
 static float convertToVoltage(uint16_t raw) {
@@ -44,7 +44,7 @@ void QT_EADC_initialise() {
  * This function returns false if the device was busy. If this is the case
  * no action is taken.
  **/
-bool QT_EADC_measureSweepCurrent(adc_read_func callback) {
+bool QT_EADC_measureSweepCurrent(adc_read_func_t callback) {
     adcCode = 0;
     QT_SPI_listenToSlave(&ADC);
     currentCallback = callback;
@@ -56,7 +56,7 @@ bool QT_EADC_measureSweepCurrent(adc_read_func callback) {
  * This function returns false if the device was busy. If this is the case
  * no action is taken.
  **/
-bool QT_EADC_measureFloatVoltage(adc_read_func callback) {
+bool QT_EADC_measureFloatVoltage(adc_read_func_t callback) {
     adcCode = 1;
     QT_SPI_listenToSlave(&ADC);
     currentCallback = callback;
@@ -68,7 +68,7 @@ bool QT_EADC_measureFloatVoltage(adc_read_func callback) {
  * This function returns false if the device was busy. If this is the case
  * no action is taken.
  **/
-bool QT_EADC_measureSweepVoltage(adc_read_func callback) {
+bool QT_EADC_measureSweepVoltage(adc_read_func_t callback) {
     adcCode = 2;
     QT_SPI_listenToSlave(&ADC);
     currentCallback = callback;
