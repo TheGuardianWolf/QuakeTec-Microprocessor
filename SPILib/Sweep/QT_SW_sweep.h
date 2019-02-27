@@ -4,7 +4,11 @@
 /*
  * Includes
  */
-#include <float.h>
+#include "Common/QT_COM_common.h"
+#include "ExternalADC/QT_adc_external.h"
+#include "DAC/QT_DAC.h"
+#include "Digipot/QT_DIGIPOT.h"
+#include "FRAM/QT_FRAM.h"
 
 /*
  * Type definitions
@@ -14,6 +18,7 @@ typedef struct {
     float digiPotGain;
     uint16_t minDacVoltage;
     uint16_t maxDacVoltage;
+    int dacOffset;
 } sweep_settings_t;
 
 typedef struct {
@@ -21,7 +26,7 @@ typedef struct {
     uint16_t *sweepVoltages;
 
     /** The number of floats in the array. */
-    int bufferLength;
+    uint16_t bufferLength;
 } sweep_data_t;
 
 /*
