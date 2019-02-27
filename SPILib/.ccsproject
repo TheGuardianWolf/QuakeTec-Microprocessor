@@ -11,7 +11,7 @@
 	<rts value="libc.a"/>
 	<createSlaveProjects value=""/>
 	<templateProperties value="id=eusci_a_spi_ex1_master.projectspec.eusci_a_spi_ex1_master"/>
-	<origin value="/home/james/ti/msp430ware_3_80_05_04/driverlib/examples/MSP430FR2xx_4xx/eusci_a_spi/CCS/eusci_a_spi_ex1_master.projectspec"/>
+	<origin value="C:/Users/PC/Documents/University/APSS/QuakeTEC/QuakeTec-Microprocessor/SPILib"/>
 	<filesToOpen value=""/>
 	<connection value="common/targetdb/connections/TIMSP430-USB.xml"/>
 	<isTargetManual value="false"/>

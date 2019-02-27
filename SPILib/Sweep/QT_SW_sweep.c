@@ -28,7 +28,7 @@
 /*
  * Type definitions
  */
-typedef void(*adc_retrieve_func)(adc_read_func callback);
+typedef bool(*adc_retrieve_func_t)(adc_read_func_t callback);
 
 /*
  * Private variables
@@ -83,15 +83,19 @@ static void processAdcValue(uint16_t voltage) {
 /**
  * Asks ADC for a value according to the retrieve function and waits until value has been returned.
  */
-static uint16_t retrieveAdcValue(adc_retrieve_func *retrieveFunction) {
+static uint16_t retrieveAdcValue(adc_retrieve_func_t retrieveFunction) {
 
     adcValueProcessed = false;
+    bool deviceReady;
 
     // Wait until SPI line is free to measure sweep voltage
-    while (~(*retrieveFunction)(&processAdcValue));
+    do {
+        deviceReady = (*retrieveFunction)((adc_read_func_t) processAdcValue);
+    }
+    while (!deviceReady);
 
     // Wait until sweep voltage handler is called
-    while (~adcValueProcessed);
+    while (!adcValueProcessed);
 
     uint16_t value = adcValue;
     adcValueProcessed = false;
@@ -103,7 +107,7 @@ static uint16_t retrieveAdcValue(adc_retrieve_func *retrieveFunction) {
  * Sweeps from start DAC voltage to end DAC voltage in SWEEP_LENGTH ms. This function updates the DAC so that it
  * passes through every value.
  */
-static sweep_data_t sweep(sweep_settings_t settings, uint8_t numSamples) {
+static sweep_data_t sweep(sweep_settings_t settings, int numSamples) {
 
     sweep_data_t sweepData;
     uint16_t dacVoltage;
@@ -141,19 +145,16 @@ static sweep_data_t sweep(sweep_settings_t settings, uint8_t numSamples) {
  */
 static void setPreSweepDigiPotGain(sweep_settings_t *sweepSettingsPtr) {
 
-    // Initialise min and max sweep voltages
-    uint16_t maxSweepVoltage = 0;
-
     // Set DigiPot to its required gain
     QT_DIGIPOT_setGain(sweepSettingsPtr->digiPotGain);
 
     // Conduct sweep and retrieve data
-    sweep_data_t preSweepDataPtr = sweep(*sweepSettingsPtr, NUM_SAMPLES_PRESWEEP);
+    sweep_data_t preSweepData = sweep(*sweepSettingsPtr, NUM_SAMPLES_PRESWEEP);
 
     // Find max sweep voltage
-    uint16_t localMaxSweepVoltage = max(preSweepDataPtr->sweepVoltages, preSweepDataPtr->bufferLength);
+    uint16_t localMaxSweepVoltage = QT_COM_max(preSweepData.sweepVoltages, preSweepData.bufferLength);
 
-    sweepSettingsPtr->digiPotGain = (float) MAX_SWEEP_VOLTAGE_TARGET / maxSweepVoltage;
+    sweepSettingsPtr->digiPotGain = (float) MAX_SWEEP_VOLTAGE_TARGET / localMaxSweepVoltage;
 }
 
 /**
@@ -176,10 +177,10 @@ static void smoothPreSweepData(sweep_data_t *preSweepDataPtr) {
             uint32_t total = 0;
 
             for (j = i + 1 - SMOOTH_WINDOW_SIZE/2; j < i - 1 + SMOOTH_WINDOW_SIZE/2; j++) {
-                total += (*(preSweepDataPtr->sweepVoltages))[j];
+                total += preSweepDataPtr->sweepVoltages[j];
             }
 
-            (*(preSweepDataPtr->sweepVoltages))[i] = (uint16_t)(total / SMOOTH_WINDOW_SIZE);
+            preSweepDataPtr->sweepVoltages[i] = (uint16_t)(total / SMOOTH_WINDOW_SIZE);
         }
     }
 }
