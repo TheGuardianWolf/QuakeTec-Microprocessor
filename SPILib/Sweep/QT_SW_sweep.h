@@ -4,63 +4,43 @@
 /*
  * Includes
  */
-#include <float.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include "driverlib.h"
-
-/*
- * Defines
- */
-#define SWEEP_DATA_BUFFER_SIZE 128 // TODO how much memory can we spare?
+#include "Common/QT_COM_common.h"
+#include "ExternalADC/QT_adc_external.h"
+#include "DAC/QT_DAC.h"
+#include "Digipot/QT_DIGIPOT.h"
+#include "FRAM/QT_FRAM.h"
 
 /*
  * Type definitions
  */
-typedef struct {
-    uint16_t *sweepVoltages [SWEEP_DATA_BUFFER_SIZE];
-    uint16_t bufferLength;
-} sweep_data_t;
 
 typedef struct {
-    uint16_t digiPotResistance;
-    float minDacVoltage;
-    float maxDacVoltage;
+    float digiPotGain;
+    uint16_t minDacVoltage;
+    uint16_t maxDacVoltage;
+    int dacOffset;
 } sweep_settings_t;
+
+typedef struct {
+    /** A pointer to the array of sweep voltages. This will be in FRAM, and should therefore not be written to. */
+    uint16_t *sweepVoltages;
+
+    /** The number of floats in the array. */
+    uint16_t bufferLength;
+} sweep_data_t;
 
 /*
  * Public functions
  */
 
 /**
- * Initialises DigiPot and DAC before main sweep, calibrates DAC and collects data.
+ * Initialises DigiPot and DAC before main sweep, returning the settings object that represents.
  */
-void QT_SW_conductPreSweep();
-
-/**
- * Puts the pre-sweep into a safe state and stops.
- */
-void QT_SW_stopPreSweep();
-
-/**
- * Returns a sweep_settings_t struct containing the digiPot resistance and max and min DAC values
- * for the sweep.
- */
-sweep_settings_t QT_SW_retrieveSweepSettings();
+sweep_settings_t QT_SW_conductPreSweep();
 
 /**
  * Conducts a sweep. When sweep data is available, conductSweep() tells the OBC by calling QT_LP_signalSweepDataReady().
  */
-void QT_SW_conductSweep();
-
-/**
- * Returns a pointer to a sweep_data_t struct containing sweep data.
- */
-sweep_data_t* QT_SW_retrieveSweepData();
-
-/**
- * Puts the sweep into a safe state and stops.
- */
-void QT_SW_stopSweep();
+sweep_data_t QT_SW_conductSweep(sweep_settings_t settings);
 
 #endif /* QT_SW_SWEEP_H_ */

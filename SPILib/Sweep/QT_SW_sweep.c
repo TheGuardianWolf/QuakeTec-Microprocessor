@@ -6,237 +6,154 @@
 /*
  * Defines
  */
-#define DIGIPOT_INITIAL_RESISTANCE 9800
-#define DIGIPOT_MAX_RESISTANCE 20000
-#define DIGIPOT_GAIN_FACTOR 9900
 
+#define INITIAL_GAIN 2.0
+
+#define DEFAULT_DAC_OFFSET 0
 #define VOLTAGE_MULTIPLE 1000
 #define DAC_MIN_VOLTAGE (0 * VOLTAGE_MULTIPLE)
 #define DAC_MAX_VOLTAGE (5 * VOLTAGE_MULTIPLE)
 #define MIN_SWEEP_VOLTAGE_TARGET 200 // 0.2 V
 #define MAX_SWEEP_VOLTAGE_TARGET 480 // 4.8 V
 
-#define NUM_VALUES_12_BITS 4096
-#define NUM_VALUES_10_BITS 1024
-#define MAX_VALUE_16_BITS 65535
-
-#define DIGIPOT_WRITE_COMMAND 0b0001
-#define SWEEP_DATA_NUM_2BYTES_PADDING 1
-
-#define SWEEP_RESOLUTION_DIVISOR 1
-#define PRESWEEP_RESOLUTION_DIVISOR 8
+#define SWEEP_LENGTH 50.0 // sweep length in ms
+#define NUM_SAMPLES_SWEEP 512
+#define NUM_SAMPLES_PRESWEEP 64
 
 #define SMOOTH_WINDOW_SIZE 5
 #define NUM_SMOOTH_PASSES 10
 
+#define SWEEP_DATA_NUM_2BYTES_PADDING 2
+
 /*
  * Type definitions
  */
-
-/**
- * Information about voltages retrieved from the sweep private to this sweep module
- */
-typedef struct {
-    uint16_t voltages [SWEEP_DATA_BUFFER_SIZE];
-    uint16_t **positionPtr;
-} sweep_voltages_t;
-
-/**
- * All information about a sweep - public and private
- */
-typedef struct {
-    sweep_voltages_t sweepVoltages;
-    sweep_data_t sweepData;
-} sweep_t;
+typedef void(*adc_retrieve_func)(adc_read_func callback);
 
 /*
  * Private variables
  */
-static sweep_settings_t sweepSettings = {0};
 
-static sweep_t sweep1 = {
-                         {NULL,
-                          &(sweep1.sweepVoltages.voltages) + SWEEP_DATA_NUM_2BYTES_PADDING},
-                         {&(sweep1.sweepVoltages.voltages) + SWEEP_DATA_NUM_2BYTES_PADDING,
-                          SWEEP_DATA_BUFFER_SIZE}
-};
-static sweep_t sweep2 = {
-                         {NULL,
-                          &(sweep2.sweepVoltages.voltages) + SWEEP_DATA_NUM_2BYTES_PADDING},
-                         {&(sweep2.sweepVoltages.voltages) + SWEEP_DATA_NUM_2BYTES_PADDING,
-                          SWEEP_DATA_BUFFER_SIZE}
-};
-static sweep_t *currentSweepPtr = &sweep1;
-static sweep_t *nonCurrentSweepPtr = &sweep2;
+/**
+ * For retrieving voltages from ADC
+ */
+static bool adcValueProcessed;
+volatile static uint16_t adcValue;
 
 /*
  * Private functions
  */
 
-// TODO move the following functions into the appropriate modules
-
 /**
- * Converts voltage used internally by MCU into a uint16 value for the DAC to use.
+ * Create the default settings object.
  */
-static uint16_t convertToDacVoltage(uint16_t voltage) {
-    return voltage; // TODO
-}
+static sweep_settings_t createDefaultSettings() {
 
-/**
- * Converts voltage used by DAC into the corresponding voltage used internally by the MCU.
- */
-static uint16_t convertFromDacVoltage(uint16_t voltage) {
-    return voltage; // TODO
-}
+    sweep_settings_t settings;
+    settings.digiPotGain = INITIAL_GAIN;
+    settings.maxDacVoltage = DAC_MIN_VOLTAGE;
+    settings.minDacVoltage = DAC_MAX_VOLTAGE;
+    settings.dacOffset = DEFAULT_DAC_OFFSET;
 
-/**
- * Converts voltage used internally by MCU into a uint16 value for the ADC to use.
- */
-static uint16_t convertToAdcVoltage(uint16_t voltage) {
-    return voltage; // TODO
-}
-
-/**
- * Converts voltage used by ADC into the corresponding voltage used internally by the MCU.
- */
-static uint16_t convertFromAdcVoltage(uint16_t voltage) {
-    return voltage; // TODO
-}
-
-/**
- * Converts resistance used internally by the MCU into a resistance for the DigiPot.
- */
-static uint16_t convertToDigiPotResistance(uint16_t resistance) {
-    return (uint16_t) (resistance * NUM_VALUES_10_BITS / DIGIPOT_MAX_RESISTANCE);
-}
-
-/**
- * Sets the DigiPot to a given resistance.
- */
-static void setDigiPotResistance(uint16_t resistance) {
-    //QT_DIGIPOT_setControlBits(DIGIPOT_WRITE_COMMAND); // TODO uncomment
-    //QT_DIGIPOT_setDataBits(convertToDigiPotResistance(resistance)); // TODO uncomment
-}
-
-// TODO move the following functions (max and min) into common module
-
-/**
- * Finds the maximum value in an array.
- */
-static uint16_t max(uint16_t values [], uint16_t length) {
-    int i;
-    uint16_t currentMax = values[0];
-
-    for (i = 1; i < length; i++) {
-        if (values[i] > currentMax) {
-            currentMax = values[i];
-        }
-    }
-
-    return currentMax;
-}
-
-/**
- * Finds the minimum value in an array.
- */
-static uint16_t min(uint16_t values [], uint16_t length) {
-    int i;
-    uint16_t currentMin = values[0];
-
-    for (i = 1; i < length; i++) {
-        if (values[i] < currentMin) {
-            currentMin = values[i];
-        }
-    }
-
-    return currentMin;
+    return settings;
 }
 
 /**
  * Sets initial values of DigiPot and DAC.
  */
-static void initialiseDigiPotAndDac() {
+static void initialiseDigiPotAndDac(sweep_settings_t settings) {
 
-    // Setup starting DigiPot resistance
-    sweepSettings.digiPotResistance = DIGIPOT_INITIAL_RESISTANCE;
-
-    // Set resistance on DigiPot
-    setDigiPotResistance(sweepSettings.digiPotResistance);
-
-    // Setup starting DAC voltage
-    sweepSettings.minDacVoltage = DAC_MIN_VOLTAGE;
-    sweepSettings.maxDacVoltage = DAC_MAX_VOLTAGE;
+    // Set gain on DigiPot
+    QT_DIGIPOT_setGain(settings.digiPotGain);
 
     // Set starting voltage on DAC
-    //QT_DAC_setOutputValue(dacVoltage);
+    QT_DAC_setOutputValue(settings.minDacVoltage);
 }
 
 // TODO check exit flags before doing stuff
-// TODO make things set in interrupts volatile
 
 /**
- * Sweeps from start DAC voltage for 127 sweeps or until the maximum DAC voltage is reached, whichever happens first.
- * Increases the DAC voltage after each sweep. Populates sweepPtr->sweepVoltages.voltages with voltages retrieved
- * from the sweep. Will block until the current data in the sweep data buffer is allowed to be overwritten.
+ * Remembers value returned by ADC.
  */
-static void sweep(sweep_t *sweepPtr, uint16_t startDacVoltage, uint16_t endDacVoltage, uint8_t resolutionDivisor) {
+static void processAdcValue(uint16_t voltage) {
+    adcValue = voltage;
+    adcValueProcessed = true;
+}
 
-    // Wait until sweep voltage data can be overwritten
-    while (sweepPtr->sweepVoltages.positionPtr - &(sweepPtr->sweepVoltages.voltages) >= SWEEP_DATA_BUFFER_SIZE);
+/**
+ * Asks ADC for a value according to the retrieve function and waits until value has been returned.
+ */
+static uint16_t retrieveAdcValue(adc_retrieve_func *retrieveFunction) {
 
-    sweepPtr->sweepData.bufferLength = SWEEP_DATA_NUM_2BYTES_PADDING;
+    adcValueProcessed = false;
 
-    // Find end DAC voltage
-    uint16_t maxEndVoltage = startDacVoltage + SWEEP_DATA_BUFFER_SIZE - SWEEP_DATA_NUM_2BYTES_PADDING - 1;
-    if (endDacVoltage - startDacVoltage > maxEndVoltage) {
-        endDacVoltage = maxEndVoltage;
-    }
+    // Wait until SPI line is free to measure sweep voltage
+    while (~(*retrieveFunction)(&processAdcValue));
 
+    // Wait until sweep voltage handler is called
+    while (~adcValueProcessed);
+
+    uint16_t value = adcValue;
+    adcValueProcessed = false;
+
+    return value;
+}
+
+/**
+ * Sweeps from start DAC voltage to end DAC voltage in SWEEP_LENGTH ms. This function updates the DAC so that it
+ * passes through every value.
+ */
+static sweep_data_t sweep(sweep_settings_t settings, uint8_t numSamples) {
+
+    sweep_data_t sweepData;
     uint16_t dacVoltage;
+    uint16_t sampleWidth = (settings.maxDacVoltage - settings.maxDacVoltage) * VOLTAGE_MULTIPLE / numSamples;
+    uint8_t sampleCounter = 0; // determines when to take readings from the ADC
 
-    // Sweep from start to end DAC voltages in increments on the resolution divisor
-    for (dacVoltage = startDacVoltage; dacVoltage <= endDacVoltage; dacVoltage += resolutionDivisor) {
-        // TODO wait for new readings from ADCs
-        //QT_DAC_setOutputValue(dacVoltage);    // set DAC voltage
-        uint16_t sweepVoltage = 0;              // TODO retrieve from ADC1_1
-        uint16_t refVoltage = 0;                // TODO retrieve from ADC1_2
+    sweepData.bufferLength = SWEEP_DATA_NUM_2BYTES_PADDING;
 
-        *(*(sweepPtr->sweepVoltages.positionPtr)) = sweepVoltage - refVoltage; // add sweep voltage data
-        sweepPtr->sweepVoltages.positionPtr++; // move current voltage pointer
-        sweepPtr->sweepData.bufferLength++; // increment buffer length
+    // Sweep up from start DAC value to end DAC value
+    for (dacVoltage = settings.minDacVoltage; dacVoltage <= settings.maxDacVoltage; dacVoltage++) {
+
+        QT_DAC_setOutputValue(dacVoltage);              // set DAC voltage
+        sampleCounter++;
+        // TODO delay, check PCB temp etc
+
+        if (sampleCounter == sampleWidth) {             // ready to sample
+            uint16_t sweepVoltage = retrieveAdcValue(&QT_EADC_measureSweepVoltage);
+            uint16_t refVoltage = retrieveAdcValue(&QT_EADC_measureFloatVoltage);
+            QT_FRAM_write(sweepVoltage - refVoltage + settings.dacOffset);   // add sweep voltage data
+            sweepData.bufferLength++;         // increment buffer length
+        }
     }
+
+    // Sweep down from end DAC value to start DAC value TODO make this async
+    for (dacVoltage = settings.maxDacVoltage; dacVoltage <= settings.minDacVoltage; dacVoltage--) {
+        QT_DAC_setOutputValue(dacVoltage);              // set DAC voltage
+    }
+
+    return sweepData;
 }
 
 /**
  * Sweeps between sweepSettings.minDacVoltage and sweepSettings.maxDacVoltage and uses the maximum LP voltage to
  * set digiPot resistance for the sweep.
  */
-static void setPreSweepDigiPotResistance() {
+static void setPreSweepDigiPotGain(sweep_settings_t *sweepSettingsPtr) {
 
     // Initialise min and max sweep voltages
     uint16_t maxSweepVoltage = 0;
 
-    uint16_t startDacVoltage = sweepSettings.minDacVoltage;
-    int i;
+    // Set DigiPot to its required gain
+    QT_DIGIPOT_setGain(sweepSettingsPtr->digiPotGain);
 
-    for (i = startDacVoltage; i < sweepSettings.maxDacVoltage; i += SWEEP_DATA_BUFFER_SIZE) {
+    // Conduct sweep and retrieve data
+    sweep_data_t preSweepDataPtr = sweep(*sweepSettingsPtr, NUM_SAMPLES_PRESWEEP);
 
-        // Set DigiPot to its required resistance
-        setDigiPotResistance(sweepSettings.digiPotResistance);
+    // Find max sweep voltage
+    uint16_t localMaxSweepVoltage = max(preSweepDataPtr->sweepVoltages, preSweepDataPtr->bufferLength);
 
-        // Conduct sweep and retrieve data
-        sweep(currentSweepPtr, startDacVoltage, sweepSettings.maxDacVoltage, PRESWEEP_RESOLUTION_DIVISOR);
-        sweep_data_t *preSweepDataPtr = QT_SW_retrieveSweepData();
-
-        // Improve max sweep voltage
-        uint16_t localMaxSweepVoltage = max(currentSweepPtr->sweepVoltages.voltages, currentSweepPtr->sweepData.bufferLength);
-        if (localMaxSweepVoltage > maxSweepVoltage) {
-            maxSweepVoltage = localMaxSweepVoltage;
-        }
-    }
-
-    uint16_t maxGain = MAX_SWEEP_VOLTAGE_TARGET / maxSweepVoltage;
-    sweepSettings.digiPotResistance = DIGIPOT_GAIN_FACTOR / (maxGain - 1);
+    sweepSettingsPtr->digiPotGain = (float) MAX_SWEEP_VOLTAGE_TARGET / maxSweepVoltage;
 }
 
 /**
@@ -275,29 +192,46 @@ static void findInflectionPoints(sweep_data_t *preSweepDataPtr, uint16_t *firstI
 }
 
 /**
- * Sets the minimum and maximum DAC values for the sweep. SetPreSweepDigiPotResistance() should be called first.
+ * Sets the minimum and maximum DAC values for the sweep. SetPreSweepDigiPotGain() should be called first.
  */
-static void setPreSweepDacLimits() {
+static void setPreSweepDacLimits(sweep_settings_t *sweepSettingsPtr) {
 
     // Set DigiPot to its required resistance
-    setDigiPotResistance(sweepSettings.digiPotResistance);
+    QT_DIGIPOT_setGain(sweepSettingsPtr->digiPotGain);
 
     // Conduct sweep - will block until the sweep is completed
-    sweep(currentSweepPtr, sweepSettings.minDacVoltage, sweepSettings.maxDacVoltage, PRESWEEP_RESOLUTION_DIVISOR);
+    sweep_data_t sweepData = sweep(*sweepSettingsPtr, NUM_SAMPLES_PRESWEEP);
 
     // Smooth data
-    sweep_data_t *preSweepDataPtr = QT_SW_retrieveSweepData();
-    smoothPreSweepData(preSweepDataPtr);
+    smoothPreSweepData(&sweepData);
 
     // Find DAC voltages at the inflection points
     uint16_t firstInflection;
     uint16_t secondInflection;
-    findInflectionPoints(preSweepDataPtr, &firstInflection, &secondInflection);
+    findInflectionPoints(&sweepData, &firstInflection, &secondInflection);
 
     // Set DAC limits
     uint16_t targetThirdOfDacRange = secondInflection - firstInflection;
-    sweepSettings.minDacVoltage = firstInflection - targetThirdOfDacRange;
-    sweepSettings.maxDacVoltage = secondInflection + targetThirdOfDacRange;
+    sweepSettingsPtr->minDacVoltage = firstInflection - targetThirdOfDacRange;
+    sweepSettingsPtr->maxDacVoltage = secondInflection + targetThirdOfDacRange;
+}
+
+/**
+ * Puts the sweep into a safe state.
+ */
+static void placeSweepInSafeState() {
+    // TODO
+}
+
+/**
+ * Uses feedback from ADC1_2 to find DAC offset. Adds this to settings.
+ */
+static void adjustForDacOffset(sweep_settings_t *settings) {
+
+    uint16_t adcCurrent = retrieveAdcValue(&QT_EADC_measureSweepCurrent);
+    float spVoltageFromAdc = -(55 * adcCurrent)/409600 + 1.65; // TODO make these magic numbers #defines
+    float spVoltage = retrieveAdcValue(&QT_EADC_measureSweepVoltage) / VOLTAGE_MULTIPLE;
+    settings->dacOffset = spVoltageFromAdc - spVoltage;
 }
 
 /*
@@ -307,78 +241,35 @@ static void setPreSweepDacLimits() {
 /**
  * Calibrates DAC and initialises DigiPot resistance and DAC limits before main sweep.
  */
-void QT_SW_conductPreSweep() {
-    // TODO health checks
+sweep_settings_t QT_SW_conductPreSweep() {
+
+    sweep_settings_t settings = createDefaultSettings();
 
     // Set up starting DigiPot and DAC values
-    initialiseDigiPotAndDac();
+    initialiseDigiPotAndDac(settings);
 
-    // TODO find DAC offset
+    // Find DAC offset
+    adjustForDacOffset(&settings);
 
     // Set new DigiPot resistance
-    setPreSweepDigiPotResistance();
+    setPreSweepDigiPotGain(&settings);
 
     // Resweep with new DigiPot resistance to find DAC limits
-    setPreSweepDacLimits();
-}
+    setPreSweepDacLimits(&settings);
 
-/**
- * Returns a pointer to a sweep_settings_t struct containing the digiPot resistance and max and min DAC values
- * for the sweep.
- */
-sweep_settings_t QT_SW_retrieveSweepSettings() {
-    return sweepSettings; // TODO what if settings are not ready?
+    return settings;
 }
-
-/**
- * Puts the pre-sweep into a safe state and stops.
- */
-void QT_SW_stopPreSweep();
 
 /**
  * Conducts a sweep. When sweep data is available, conductSweep() tells the OBC by calling QT_LP_signalSweepDataReady().
  */
-void QT_SW_conductSweep() {
+sweep_data_t QT_SW_conductSweep(sweep_settings_t settings) {
 
-    uint16_t startDacVoltage = sweepSettings.minDacVoltage;
-    int i;
+    // Set DigiPot to its required resistance
+    QT_DIGIPOT_setGain(settings.digiPotGain);
 
-    for (i = startDacVoltage; i < sweepSettings.maxDacVoltage; i += SWEEP_DATA_BUFFER_SIZE) {
+    // Conduct sweep
+    sweep_data_t sweepData = sweep(settings, NUM_SAMPLES_SWEEP);
 
-        // Set DigiPot to its required resistance
-        setDigiPotResistance(sweepSettings.digiPotResistance);
-
-        // Conduct sweep - will block until the sweep data buffer is allowed to be filled
-        sweep(currentSweepPtr, startDacVoltage, sweepSettings.maxDacVoltage, SWEEP_RESOLUTION_DIVISOR);
-
-        // Signal that data is ready
-        // QT_LP_signalSweepDataReady(); TODO uncomment
-    }
+    return sweepData;
 }
-
-/**
- * Returns a pointer to a sweep_data_t struct containing voltages retrieved from a sweep.
- */
-sweep_data_t* QT_SW_retrieveSweepData() {
-
-    // Switch the sweep to build up
-    sweep_t *tempSweepPtr = currentSweepPtr;
-    currentSweepPtr = nonCurrentSweepPtr;
-    nonCurrentSweepPtr = tempSweepPtr;
-
-    // The previously requested sweep data has already been processed - allow it to be overwritten
-    currentSweepPtr->sweepVoltages.positionPtr = &(sweep1.sweepVoltages.voltages) + SWEEP_DATA_NUM_2BYTES_PADDING;
-
-    return &(nonCurrentSweepPtr->sweepData);
-}
-
-/**
- * Puts the sweep into a safe state and stops.
- */
-void QT_SW_stopSweep();
-
-/*
- * Interrupts
- */
-
-
