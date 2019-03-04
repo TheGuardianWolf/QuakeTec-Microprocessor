@@ -61,6 +61,16 @@ void QT_SPI_listenToSlave(device_t *device);
 void QT_SPI_stopListeningToSlave();
 
 /**
+ * Stops listening to master
+ */
+void QT_SPI_stopListeningToMaster();
+
+/**
+ * Starts listening to master.
+ */
+void QT_SPI_listenToMaster();
+
+/**
  * Returns true if all data has been sent.
  */
 bool QT_SPI_isDataSent();

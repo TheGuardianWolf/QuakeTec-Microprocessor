@@ -46,7 +46,9 @@ static device_t *currentSlavePtr;
 /**
  * Whether we are currently listening to the slave.
  */
-static bool volatile isListening;
+static bool volatile isListeningToSlave;
+
+static bool volatile isListeningToMaster;
 
 /**
  * This variable is true if we have sent a byte to the transmit function, and we are still waiting for the interrupt to be called.
@@ -232,7 +234,7 @@ static void sendByte(device_t *devicePtr, spi_transmit_func transmitData, byte c
         // Have we finished sending to a slave device?
         if (devicePtr->isSlave) {
             // If we are listening, but not sending, send 0 to keep the system listening.
-            if (isListening) {
+            if (isListeningToSlave) {
                 sendNullByteToSlave();
             } else {
                 setChipSelect(NULL);
@@ -336,7 +338,7 @@ void QT_SPI_initialise() {
     masterTransmitPtr = NULL;
 
     // Setup listening
-    isListening = false;
+    isListeningToSlave = false;
 
     // Set base addresses
 
@@ -378,7 +380,7 @@ bool QT_SPI_transmit(byte const *dataPtr, uint16_t length, device_t *devicePtr, 
         setChipSelect(devicePtr);
 
         // Clear the listening flag
-        isListening = false;
+        isListeningToSlave = false;
     }
 
     // Set the transmit buffer
@@ -450,7 +452,7 @@ void QT_SPI_listenToSlave(device_t *devicePtr) {
     // Set the chip select
     setChipSelect(devicePtr);
 
-    isListening = true;
+    isListeningToSlave = true;
 
     if (!isSlaveTransmitInterruptPending) {
         sendNullByteToSlave();
@@ -470,7 +472,30 @@ void QT_SPI_listenToSlave(device_t *devicePtr) {
  * THIS METHOD WILL INTERLIEVE WITH ANY INTERRUPTS
  */
 void QT_SPI_stopListeningToSlave() {
-    isListening = false;
+    isListeningToSlave = false;
+}
+
+/**
+ * Stops listening to the master.
+ *
+ * THIS METHOD WILL INTERLIEVE WITH ANY INTERRUPTS
+ */
+void QT_SPI_stopListeningToMaster() {
+    isListeningToMaster = false;
+}
+
+/**
+ * Starts listening to master.
+ *
+ * THIS METHOD WILL INTERLIEVE WITH ANY INTERRUPTS
+ */
+void QT_SPI_listenToMaster() {
+    // Clear the receive buffer
+
+    if(!isListeningToMaster) {
+        masterReceiveBufferPtr = masterReceiveBuffer;
+        isListeningToMaster = true;
+    }
 }
 
 /**
@@ -535,7 +560,10 @@ void USCI_A1_ISR (void)
             case USCI_SPI_UCRXIFG:
 
                 // Receive data from master
-                receiveByte(&OBC, &EUSCI_A_SPI_receiveData, &masterReceiveBufferPtr, masterReceiveBuffer);
+                if(isListeningToMaster) {
+                    receiveByte(&OBC, &EUSCI_A_SPI_receiveData, &masterReceiveBufferPtr, masterReceiveBuffer);
+                }
+
                 break;
 
             // Transmit data case

@@ -69,6 +69,8 @@ void queueEvent(PL_Event_t event) {
 
 void flagEventsFinishedSending(bool unused) {
     finishedSendingEvents = true;
+
+    QT_SPI_listenToMaster();
 }
 
 void sendEvents() {
@@ -76,6 +78,8 @@ void sendEvents() {
     eventQueue[eventQueueStart - 2] = PL_START_BYTE;
 
     finishedSendingEvents = false;
+
+    QT_SPI_stopListeningToMaster(); // Stop reading until the data is sent
 
     QT_SPI_transmit(
             &eventQueue[eventQueueStart - EVENT_QUEUE_HEADER_LENGTH],
@@ -157,6 +161,7 @@ void obcIncommingHandler(const byte *data) {
  */
 void startListening() {
     QT_SPI_setReceiveHandler(obcIncommingHandler, 2, &OBC);
+    QT_SPI_listenToMaster();
 }
 
 void toggleLED() {
