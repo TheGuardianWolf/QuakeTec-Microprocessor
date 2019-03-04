@@ -48,7 +48,7 @@ static device_t *currentSlavePtr;
  */
 static bool volatile isListeningToSlave;
 
-static bool volatile isListeningToMaster;
+static bool volatile isListeningToMaster = true;
 
 /**
  * This variable is true if we have sent a byte to the transmit function, and we are still waiting for the interrupt to be called.
@@ -394,7 +394,10 @@ bool QT_SPI_transmit(byte const *dataPtr, uint16_t length, device_t *devicePtr, 
         masterTransmitHandler = handler;
     }
 
-    if (!isSlaveTransmitInterruptPending) {
+    if (!devicePtr->isSlave) {
+        // Get the data ready for the next clock to send.
+        sendByte(devicePtr, &EUSCI_A_SPI_transmitData, &masterTransmitPtr, masterTransmitStopPtr, &masterTransmitHandler);
+    } else if (!isSlaveTransmitInterruptPending) {
         // Start interrupts for the slave, we don't need to do this for the master, as it is externally clocked.
         sendByte(currentSlavePtr, &EUSCI_B_SPI_transmitData, &slaveTransmitPtr, slaveTransmitStopPtr, &slaveTransmitHandler);
     }
