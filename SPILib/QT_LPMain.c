@@ -35,6 +35,11 @@ void initialise() {
     // Stop watchdog timer
     WDT_A_hold(WDT_A_BASE);
 
+    CS_initFLLSettle(
+            16000 / 4,
+            487 / 4
+    );
+
     GPIO_setAsOutputPin(GPIO_PORT_P1, GPIO_PIN0);
     GPIO_setOutputLowOnPin(GPIO_PORT_P1, GPIO_PIN0);
 
@@ -43,7 +48,14 @@ void initialise() {
 
     QT_IADC_initialise();
     QT_SPI_initialise();
-    QT_TIMER_initialise();
+    //QT_TIMER_initialise();
+    QT_EADC_initialise();
+
+    GPIO_setAsPeripheralModuleFunctionOutputPin(
+            GPIO_PORT_P2,
+            GPIO_PIN6,
+            GPIO_PRIMARY_MODULE_FUNCTION
+    );
 
     // Disable the GPIO power-on default high-impedance mode
     // to activate previously configured port settings
@@ -67,10 +79,14 @@ void queueEvent(PL_Event_t event) {
     eventQueue[--eventQueueStart] = (byte) event;
 }
 
+void finishTransmission(bool unused) {
+    QT_SPI_listenToMaster();
+}
+
 void flagEventsFinishedSending(bool unused) {
     finishedSendingEvents = true;
 
-    QT_SPI_listenToMaster();
+    finishTransmission(unused);
 }
 
 void sendEvents() {
@@ -90,6 +106,8 @@ void sendEvents() {
     eventQueueStart = EVENT_QUEUE_LENGTH;
 }
 
+byte queryData [4] = { PL_START_BYTE, 2, 0, 0 };
+
 void sendMax() {
 
 }
@@ -103,7 +121,12 @@ void sendDigipot() {
 }
 
 void sendTemperature() {
+    QT_SPI_stopListeningToMaster();
 
+    queryData[2] = 0xf0;
+    queryData[3] = 0x0f;
+
+    QT_SPI_transmit(queryData, 4, &OBC, finishTransmission);
 }
 
 void sendSamplingData() {
@@ -134,7 +157,7 @@ void handleQuery(PL_Query_t query, const byte data [2]) {
 }
 
 void handleCommand(PL_Command_t command, const byte data [2]) {
-    if(commandRunning && (command == PL_COMMAND_POWER_OFF || command == PL_COMMAND_STOP_TASK)) {
+    if(commandRunning && (command == PL_COMMAND_POWER_OFF/* || command == PL_COMMAND_STOP_TASK */)) {
         exitCommand = true;
         queueEvent(PL_EVENT_TASK_INTERRUPTED);
 
@@ -176,7 +199,11 @@ void main(void) {
 
     startListening();
 
-    QT_TIMER_startPeriodicTask(toggleLED, 50);
+    while(true) {
+        QT_EADC_measureFloatVoltage(voltage);
+
+        __delay_cycles(10000);
+    }
 
     while(true) {
         // Wait until a command has been queued
@@ -188,8 +215,8 @@ void main(void) {
             break;
         case PL_COMMAND_CALIBRATION_STOP:
             break;
-        case PL_COMMAND_DEPLOY:
-            break;
+            //case PL_COMMAND_DEPLOY:
+            //    break;
         case PL_COMMAND_POWER_OFF:
             break;
         case PL_COMMAND_POWER_ON:

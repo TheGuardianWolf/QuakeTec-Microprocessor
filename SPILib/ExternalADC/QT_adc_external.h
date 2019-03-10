@@ -12,6 +12,8 @@
 
 typedef void(*adc_read_func_t)(float data);
 
+void QT_EADC_initialise();
+
 /**
  * Reads the sweep current in A from the sweeping probe.
  * This function returns false if the device was busy. If this is the case

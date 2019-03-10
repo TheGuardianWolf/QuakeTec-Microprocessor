@@ -7,7 +7,7 @@
  * Defines
  */
 #define BUFFER_LENGTH 256
-#define SPI_CLK_FREQUENCY 50000
+#define SPI_CLK_FREQUENCY 3200000
 #define DEFAULT_SEND 0
 
 typedef void(*spi_transmit_func)(uint16_t, uint8_t);
@@ -49,6 +49,7 @@ static device_t *currentSlavePtr;
 static bool volatile isListeningToSlave;
 
 static bool volatile isListeningToMaster = true;
+static bool volatile requestedMasterListenState = true;
 
 /**
  * This variable is true if we have sent a byte to the transmit function, and we are still waiting for the interrupt to be called.
@@ -479,12 +480,32 @@ void QT_SPI_stopListeningToSlave() {
 }
 
 /**
+ * This function is called to propogate isListening, this is to guard against this state changing while
+ * the byte is sending.
+ */
+static void setMasterListenState(bool isListening) {
+    if(isListeningToMaster == isListening) {
+        return;
+    }
+
+    isListeningToMaster = isListening;
+
+    if(isListeningToMaster) {
+        // Reset the buffer
+        masterReceiveBufferPtr = masterReceiveBuffer;
+        GPIO_setOutputHighOnPin(GPIO_PORT_P1, GPIO_PIN0);
+    } else {
+        GPIO_setOutputLowOnPin(GPIO_PORT_P1, GPIO_PIN0);
+    }
+}
+
+/**
  * Stops listening to the master.
  *
  * THIS METHOD WILL INTERLIEVE WITH ANY INTERRUPTS
  */
 void QT_SPI_stopListeningToMaster() {
-    isListeningToMaster = false;
+    requestedMasterListenState = false;
 }
 
 /**
@@ -493,12 +514,7 @@ void QT_SPI_stopListeningToMaster() {
  * THIS METHOD WILL INTERLIEVE WITH ANY INTERRUPTS
  */
 void QT_SPI_listenToMaster() {
-    // Clear the receive buffer
-
-    if(!isListeningToMaster) {
-        masterReceiveBufferPtr = masterReceiveBuffer;
-        isListeningToMaster = true;
-    }
+    requestedMasterListenState = true;
 }
 
 /**
@@ -561,19 +577,22 @@ void USCI_A1_ISR (void)
         {
             // Receive data case
             case USCI_SPI_UCRXIFG:
-
                 // Receive data from master
                 if(isListeningToMaster) {
                     receiveByte(&OBC, &EUSCI_A_SPI_receiveData, &masterReceiveBufferPtr, masterReceiveBuffer);
                 }
 
+                setMasterListenState(requestedMasterListenState);
+
                 break;
 
             // Transmit data case
             case USCI_SPI_UCTXIFG:
+                setMasterListenState(requestedMasterListenState);
 
                 // Transmit data to master
                 sendByte(&OBC, &EUSCI_A_SPI_transmitData, &masterTransmitPtr, masterTransmitStopPtr, &masterTransmitHandler);
+
                 break;
 
             default:
