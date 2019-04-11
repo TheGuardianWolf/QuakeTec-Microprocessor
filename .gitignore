@@ -1,3 +1,6 @@
 .settings/
 .launches/
 Debug/
+/.metadata/
+.jxbrowser-data/*
+RemoteSystemsTempFiles/*
