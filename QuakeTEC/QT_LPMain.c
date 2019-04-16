@@ -6,7 +6,7 @@
 #include "SpiLib/QT_SPI_SpiLib.h"
 #include "QT_LPMain.h"
 #include "BurnWire/QT_BW_BurnWire.h"
-
+#include "Sweep/QT_SW_sweep.h"
 #include "Timer/QT_timer.h"
 
 #define EVENT_QUEUE_LENGTH 256
@@ -27,7 +27,8 @@ uint8_t digipotData;
 // Command systems
 volatile bool exitCommand = false;
 
-/** The value of this variable is undefined if commandRunning = false */
+/** The value of this variable is
+ * undefined if commandRunning = false */
 volatile PL_Command_t currentCommand;
 volatile bool commandRunning = false;
 
@@ -44,7 +45,7 @@ void initialise() {
 //    CSCTL4 = 0;
 //    CSCTL4 |= BIT9 + SELMS_0;
 
-//    CS_initClockSignal(CS_ACLK, CS_VLOCLK_SELECT, CS_CLOCK_DIVIDER_1);
+    CS_initClockSignal(CS_ACLK, CS_VLOCLK_SELECT, CS_CLOCK_DIVIDER_1);
 
     CS_initFLLSettle(
             4000,
@@ -67,14 +68,11 @@ void initialise() {
     // to activate previously configured port settings
     PMM_unlockLPM5();
 
-    //Set Aclk to use VLO internal oscillator 10kHz
-//    CSCTL4 &= ~(BIT9|BIT8);
-
     // Enable interrupts
 
-//    aclk_speed = CS_getACLK();
-//    mclk_speed = CS_getMCLK();
-//    smclk_speed = CS_getSMCLK();
+    aclk_speed = CS_getACLK();
+    mclk_speed = CS_getMCLK();
+    smclk_speed = CS_getSMCLK();
     __enable_interrupt();
 }
 
@@ -230,69 +228,77 @@ void main(void) {
     setupDeploymentTest();
 //    startPeriodicTask(DEPLOY_PROBE_SP, 5000, 500);
 //    startPeriodicTask(DEPLOY_PROBE_SP, 5000, 500);
-    while(true) {
-        QT_EADC_measureFloatVoltage(adcHandler);
-    }
 //    while(true) {
-////        QT_EADC_measureSweepCurrent(&adcHandler);
-////         Wait until a command has been queued
-//        while(!commandRunning);
-//
-////         These command functions are blocking.
-//        switch(currentCommand) {
-//        case PL_COMMAND_CALIBRATION_START:
-//            queueEvent(PL_EVENT_CALIBRATION_DONE);
-//            break;
-//        case PL_COMMAND_CALIBRATION_STOP:
-//            break;
-//            //case PL_COMMAND_DEPLOY:
-//            //    break;
-//        case PL_COMMAND_POWER_OFF:
-//            break;
-//        case PL_COMMAND_POWER_ON:
-//            queueEvent(PL_EVENT_PROBE_POWERED);
-//            break;
-//        case PL_COMMAND_SAMPLING_START:
-//            break;
-//        case PL_COMMAND_SAMPLING_STOP:
-//            break;
-//        case PL_COMMAND_DEPLOY:
-//            QT_BW_deploy();
-//            queueEvent(PL_EVENT_PROBE_DEPLOYED);
-//        default:
-//            break;
-//        }
-//
-//        commandRunning = false;
+//        QT_EADC_measureFloatVoltage(adcHandler);
 //    }
+
+    while(true) {
+//        QT_EADC_measureSweepCurrent(&adcHandler);
+//         Wait until a command has been queued
+        while(!commandRunning);
+
+//         These command functions are blocking.
+        switch(currentCommand) {
+        case PL_COMMAND_CALIBRATION_START:
+            queueEvent(PL_EVENT_CALIBRATION_DONE);
+            break;
+        case PL_COMMAND_CALIBRATION_STOP:
+            break;
+            //case PL_COMMAND_DEPLOY:
+            //    break;
+        case PL_COMMAND_POWER_OFF:
+            break;
+        case PL_COMMAND_POWER_ON:
+            queueEvent(PL_EVENT_PROBE_POWERED);
+            break;
+        case PL_COMMAND_SAMPLING_START:
+            break;
+        case PL_COMMAND_SAMPLING_STOP:
+            break;
+        case PL_COMMAND_DEPLOY:
+            QT_BW_deploy();
+            queueEvent(PL_EVENT_PROBE_DEPLOYED);
+        default:
+            break;
+        }
+
+        commandRunning = false;
+    }
 }
 
 #pragma vector = PORT2_VECTOR
 __interrupt void Port_2(void) {
 ////    P1OUT ^= BIT1;
-//    if (pin_flag ==1) {
-//        pin_flag=0;
-////        volatile struct timer* timer_item= QT_TIMER_startPeriodicTask(DEPLOY_PROBE_SP, 3000, 100);
+    if (pin_flag ==1) {
+        pin_flag=0;
+//        volatile struct timer* timer_item= QT_TIMER_startPeriodicTask(DEPLOY_PROBE_SP, 5000, 100);
 //        currentCommand = PL_COMMAND_DEPLOY;
 //        handleCommand(PL_COMMAND_DEPLOY);
-////        while (timer_item->command != TIMER_STOP) {
-////
-////        }
-////        QT_TIMER_sleep(timer_item, 5000);
-////        while (timer_item->command != TIMER_STOP) {
-////
-////        }
-////        timer_item= QT_TIMER_startPeriodicTask(DEPLOY_PROBE_SP, 3000, 100);
+//        while (timer_item->command != TIMER_STOP) {
+
+//        }
+//        QT_TIMER_sleep(timer_item, 5000);
+//        while (timer_item->command != TIMER_STOP) {
 //
-//        pin_flag=2;
-//    } else if (pin_flag == 2) {
-//        pin_flag=0;
-//
-////        currentCommand = PL_COMMAND_ENUM_COUNT;
-////        handleCommand(PL_COMMAND_ENUM_COUNT);
-////        startPWM(DEPLOY_PROBE_FP, 8000, 10, 80);
-//        pin_flag=1;
-//    }
+//        }
+//        timer_item= QT_TIMER_startPeriodicTask(DEPLOY_PROBE_SP, 3000, 100);
+        sweep_settings_t settings;
+        settings.digiPotGain = 0;
+        settings.maxDacVoltage = 3;
+        settings.minDacVoltage = 1;
+        settings.dacOffset = 0;
+        settings.numberOfSamples = 100;
+        QT_SW_conductSweep(&settings);
+
+        pin_flag=2;
+    } else if (pin_flag == 2) {
+        pin_flag=0;
+
+//        currentCommand = PL_COMMAND_ENUM_COUNT;
+//        handleCommand(PL_COMMAND_ENUM_COUNT);
+//        startPWM(DEPLOY_PROBE_FP, 8000, 10, 80);
+        pin_flag=1;
+    }
 //
 ////    timer_setup(10, 10000);
 

@@ -18,7 +18,7 @@
 #define MAX_DUTY 100
 #define NUM_BURN_PROBES 2
 #define COOLDOWN_TIME 5000 // time (ms)
-#define BURN_FACTOR_CYCLES 1000 // burn cycle period must be a multiple of this number of clock cycles
+#define DEFAULT_DUTY 30
 
 /*
  * Private variables
@@ -59,52 +59,6 @@ static bool temperatureIsSafe() {
 }
 
 /**
- * Burns a given wire for a given duty, duty cycle frequency (pwm) and burn length.
- * Stops burning immediately if PCB temperature becomes too high.
- * After burning, turns off current and waits before returning.
- * Returns true if the wire is burnt for the burn duration or false if the burn ends prematurely due to overtemp.
- */
-static void burnAndWait(probe_t *probePtr) {
-
-    int numBurns = (int) (probePtr->burnLength * probePtr->pwm);
-
-    int numCycles = QT_COM_CLK_FREQUENCY / (probePtr->pwm * BURN_FACTOR_CYCLES);
-    int numOnCycles = (int) (numCycles * probePtr->duty);
-    int numOffCycles = numCycles - numOnCycles;
-    int count;
-
-    for (count = 0; count < numBurns; count++) {
-
-        // Stop if temperature is over limit
-//        if (!temperatureIsSafe()) {
-//            break;
-//        }
-
-        // Apply on part of duty cycle
-        GPIO_setOutputHighOnPin(probePtr->burnWirePort, probePtr->burnWirePin);
-        int onCount;
-        for (onCount = 0; onCount < numOnCycles; onCount++) {
-            __delay_cycles(BURN_FACTOR_CYCLES);
-
-            // Stop if PCB is too hot
-//            if (!temperatureIsSafe()) {
-//                break;
-//            }
-        }
-
-        // Set pin low
-        GPIO_setOutputLowOnPin(probePtr->burnWirePort, probePtr->burnWirePin);
-        int offCount;
-        for (offCount = 0; offCount < numOffCycles; offCount++) {
-            __delay_cycles(BURN_FACTOR_CYCLES);
-        }
-    }
-
-    // Wait to cool down
-    __delay_cycles(QT_COM_CLK_FREQUENCY * COOLDOWN_TIME);
-}
-
-/**
  * Burns a wire.
  */
 static bool burnWire(probe_t *probe, bool useContactSpring) {
@@ -124,81 +78,55 @@ static bool burnWire(probe_t *probe, bool useContactSpring) {
 }
 
 static void burnWireSequence(probe_t *probe, bool useContactSpring){
-
+    uint16_t PWM_duty = probe->duty;
+    bool sweepingStatus;
+    volatile struct timer* timer_item;
+    PWM_duty = probe->duty;
+    while ((PWM_duty < MAX_DUTY) && !exitCommand) {
+        sweepingStatus = burnWire(probe, useContactSpring);
+        //If probe has deployed
+        if (sweepingStatus && useContactSpring) {
+            break;
+        }
+        PWM_duty += DUTY_INCREMENT;
+        probe->duty = PWM_duty;
+        timer_item = QT_sleep(COOLDOWN_TIME);
+        while ((timer_item->command != TIMER_STOP) && (!exitCommand)) {
+        }
+    }
 }
 
 /**
  * Deploys both sweeping and floating probes
  */
 static void adaptiveBurn() {
-    uint16_t PWM_duty = SWEEPING_PROBE.duty;
-    bool sweepingStatus;
-    volatile struct timer* timer_item;
-
-    // Burn wire on sweeping probe when temperature is safe
-//    while (!temperatureIsSafe());                   // wait until PCB cools
-//    probe_t* sweepingProbePtr[] = {&SWEEPING_PROBE};   // wires to burn
-
-    PWM_duty = SWEEPING_PROBE.duty;
-    while ((PWM_duty < MAX_DUTY) && !exitCommand) {
-        sweepingStatus = burnWire(&SWEEPING_PROBE, true);
-        //If probe has deployed
-        if (sweepingStatus) {
-            break;
-        }
-        PWM_duty += DUTY_INCREMENT;
-        SWEEPING_PROBE.duty = PWM_duty;
-        timer_item = QT_sleep(COOLDOWN_TIME);
-        while ((timer_item->command != TIMER_STOP) && (!exitCommand)) {
-        }
-    }
-
-    PWM_duty = FLOATING_PROBE.duty;
-    while ((PWM_duty < MAX_DUTY) && !exitCommand) {
-        sweepingStatus = burnWire(&FLOATING_PROBE, true);
-        //If probe has deployed
-        if (sweepingStatus) {
-            break;
-        }
-        PWM_duty += DUTY_INCREMENT;
-        FLOATING_PROBE.duty = PWM_duty;
-        timer_item = QT_sleep(COOLDOWN_TIME);
-        while ((timer_item->command != TIMER_STOP) && (!exitCommand)) {
-        }
-    }
-
-    // Burn wire on floating probe when temperature is safe
-//    while (!temperatureIsSafe());                   // wait until PCB cools down
-    probe_t* floatingProbePtr[] = {&FLOATING_PROBE};   // wires to burn
-//    bool floatingStatus = burnWire(&FLOATING_PROBE, floatingProbePtr, 1);
-
-    // TODO run diagnosis program if either status is false
+    burnWireSequence(&SWEEPING_PROBE, true);
+    burnWireSequence(&FLOATING_PROBE, true);
 }
 
 /**
  * Deploys both wires, using the given wire's contact status to determine when to stop burning.
  */
 static void singleAdaptiveBurn(probe_t *contactProbePtr) {
-
-    probe_t* burnProbePtrs[] = {&SWEEPING_PROBE, &FLOATING_PROBE};
-
-    // Burn probes when temperature is safe
-//    while (!temperatureIsSafe());                   // wait until PCB cools down
-//    bool status = burnWire(contactProbePtr, burnProbePtrs, NUM_BURN_PROBES);
-
-    // TODO run diagnosis program if status is false
-
+    burnWireSequence(contactProbePtr, true);
+    uint16_t best_duty = contactProbePtr->duty >= 85 ? 100 : contactProbePtr->duty + 15;
+    if (contactProbePtr == (&SWEEPING_PROBE)) {
+        FLOATING_PROBE.duty = best_duty;
+        burnWire(&FLOATING_PROBE, false);
+    } else {
+        SWEEPING_PROBE.duty = best_duty;
+        burnWire(&SWEEPING_PROBE, false);
+    }
 }
 
 /**
  * Deploys both wires when start state indicates neither is in contact.
  */
 static void defaultBurn() {
-
-//    while (!temperatureIsSafe());                   // wait until PCB cools
-
-//    burnAndWait(&SWEEPING_PROBE);
-//    burnAndWait(&FLOATING_PROBE);
+    SWEEPING_PROBE.duty = DEFAULT_DUTY;
+    FLOATING_PROBE.duty = DEFAULT_DUTY;
+    burnWire(&SWEEPING_PROBE, false);
+    burnWire(&FLOATING_PROBE, false);
 }
 
 /*
@@ -209,9 +137,7 @@ static void defaultBurn() {
  * Sets up burn wire module. Should be called before use.
  */
 void QT_BW_initialise() {
-    P3OUT &= ~(BIT0|BIT1);
-    P3DIR &= ~(BIT0|BIT1);
-    P3REN |= BIT0|BIT1;
+
 
     // Set contact switches as inputs
     GPIO_setAsInputPin(SWEEPING_PROBE.contactSwitchPort, SWEEPING_PROBE.contactSwitchPin);
@@ -229,6 +155,9 @@ void QT_BW_initialise() {
 
 //    SWEEPING_PROBE = {GPIO_PORT_P3, GPIO_PIN1, GPIO_PORT_P1, GPIO_PIN2, START_DUTY, START_BURN_LENGTH, START_PWM_PERIOD, DEPLOY_PROBE_SP};
 //    FLOATING_PROBE = {GPIO_PORT_P3, GPIO_PIN0, GPIO_PORT_P1, GPIO_PIN1, START_DUTY, START_BURN_LENGTH, START_PWM_PERIOD, DEPLOY_PROBE_FP};
+    P3OUT &= ~(BIT0|BIT1);
+    P3DIR &= ~(BIT0|BIT1);
+    P3REN |= BIT0|BIT1;
 }
 
 /**
@@ -243,24 +172,17 @@ void QT_BW_deploy() {
             // both in contact - adaptive burn for both wires
 
         } else {
-
-//            singleAdaptiveBurn(&SWEEPING_PROBE); // floating probe not in contact - single adaptive burn
+            singleAdaptiveBurn(&SWEEPING_PROBE); // floating probe not in contact - single adaptive burn
         }
     } else {
         if (isInContact(&FLOATING_PROBE)) {
 
-//            singleAdaptiveBurn(&FLOATING_PROBE); // sweeping probe not in contact - single adaptive burn
+            singleAdaptiveBurn(&FLOATING_PROBE); // sweeping probe not in contact - single adaptive burn
 
         } else {
-
-//            defaultBurn(); // neither in contact - default burn
-//            P1DIR |= BIT1;
-//            P1OUT ^= BIT1;
-
+            defaultBurn(); // neither in contact - default burn
         }
     }
-//    P1DIR |= BIT1;
-//    P1OUT &= ~BIT1;
 
 }
 

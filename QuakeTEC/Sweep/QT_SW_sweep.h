@@ -9,6 +9,8 @@
 #include "DAC/QT_DAC.h"
 #include "Digipot/QT_digipot.h"
 #include "FRAM/QT_FRAM.h"
+#include "Timer/QT_timer.h"
+#include "QT_LPMain.h"
 
 /*
  * Type definitions
@@ -16,9 +18,10 @@
 
 typedef struct {
     float digiPotGain;
-    uint16_t minDacVoltage;
-    uint16_t maxDacVoltage;
+    float minDacVoltage;
+    float maxDacVoltage;
     int dacOffset;
+    int numberOfSamples;
 } sweep_settings_t;
 
 typedef struct {
@@ -41,6 +44,7 @@ sweep_settings_t QT_SW_conductPreSweep();
 /**
  * Conducts a sweep. When sweep data is available, conductSweep() tells the OBC by calling QT_LP_signalSweepDataReady().
  */
-sweep_data_t QT_SW_conductSweep(sweep_settings_t settings);
+//sweep_data_t QT_SW_conductSweep(sweep_settings_t settings);
+void QT_SW_conductSweep(sweep_settings_t * settings);
 
 #endif /* QT_SW_SWEEP_H_ */

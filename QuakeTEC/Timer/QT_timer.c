@@ -1,13 +1,9 @@
-#include <stdlib.h>
 
 #include "QT_timer.h"
-#include "driverlib.h"
-#include "QT_LPMain.h"
-
-static volatile task_func taskTurnOn = NULL;
-static volatile task_func taskTurnOff = NULL;
-
-static volatile task_func periodicTask = NULL;
+//static volatile task_func taskTurnOn = NULL;
+//static volatile task_func taskTurnOff = NULL;
+//
+//static volatile task_func periodicTask = NULL;
 
 static volatile uint16_t overflowsRemaining = 0;
 
@@ -24,6 +20,9 @@ static float clock_select[2] = {0.00025, 0.1};
 static int ID_select[4] = {1, 2, 4, 8};
 
 static int TBIDEX_select[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+
+extern volatile bool sweepFlag = false;
+extern volatile bool dacFlag = false;
 
 /*
  * CCR1 is used to turn on the PWM line
@@ -148,9 +147,9 @@ int QT_TIMER_sleep(volatile struct timer* timer_item, float period) {
     uint16_t duration = 0;
     timer_command t_command = TIMER_SLEEP;
     if (timer_item->command == TIMER_STOP) {
-        QT_TIMER_setup(timer_item, duration, period);
         timer_item->command = t_command;
         timer_item->runtime = duration/period;
+        QT_TIMER_setup(timer_item, duration, period);
         return 1;
     } else {
         return 0;
@@ -255,7 +254,14 @@ void QT_TIMER_handlePeriodicTask(volatile struct timer *timer_item) {
         break;
     case TIMER_SLEEP:
         break;
+    case SAMPLE_PROBE:
+        sweepFlag = true;
+        break;
+    case SET_DAC:
+        dacFlag = true;
+        break;
     }
+
 }
 
 #pragma vector = TIMER0_B0_VECTOR
