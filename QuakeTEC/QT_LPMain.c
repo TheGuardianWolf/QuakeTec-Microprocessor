@@ -1,16 +1,7 @@
-#include <InternalADC/QT_adc_internal.h>
-#include "driverlib.h"
-
-#include "ExternalADC/QT_adc_external.h"
-#include "SpiLib/QT_SPI_Protocol.h"
-#include "SpiLib/QT_SPI_SpiLib.h"
-#include "QT_LPMain.h"
-#include "BurnWire/QT_BW_BurnWire.h"
-#include "Sweep/QT_SW_sweep.h"
-#include "Timer/QT_timer.h"
-
 #define EVENT_QUEUE_LENGTH 256
 #define EVENT_QUEUE_HEADER_LENGTH 2
+#include "QT_LPMain.h"
+
 
 // Event buffer code. The buffer is on
 byte eventQueue[EVENT_QUEUE_LENGTH + EVENT_QUEUE_HEADER_LENGTH];
@@ -74,6 +65,7 @@ void initialise() {
     mclk_speed = CS_getMCLK();
     smclk_speed = CS_getSMCLK();
     __enable_interrupt();
+    __no_operation();
 }
 
 /**
@@ -209,12 +201,6 @@ void setupDeploymentTest() {
     P2IES |= BIT0;
     P2IFG &= ~BIT0;
 }
-
-static void adcHandler(float data)
-{
-    volatile float a = data;
-}
-
 /*
  * This file handles the communication with the OBC, this is the main event loop that handles
  */
@@ -224,13 +210,23 @@ void main(void) {
     initialise();
 
     startListening();
+    sweep_settings_t settings;
 
     setupDeploymentTest();
-//    startPeriodicTask(DEPLOY_PROBE_SP, 5000, 500);
-//    startPeriodicTask(DEPLOY_PROBE_SP, 5000, 500);
 //    while(true) {
-//        QT_EADC_measureFloatVoltage(adcHandler);
+//        adcRead(ADC0);
+//        float data = getAdcVoltage();
+//        QT_DAC_setVoltage(data);
+//
+////        __delay_cycles(40000);
 //    }
+
+//    settings = QT_SW_createSweepSettings(1, -15, 15, 10);
+
+    while (true) {
+        QT_SW_getPlasmaData();
+//        QT_SW_conductSweep(&settings);
+    }
 
     while(true) {
 //        QT_EADC_measureSweepCurrent(&adcHandler);
@@ -252,6 +248,10 @@ void main(void) {
             queueEvent(PL_EVENT_PROBE_POWERED);
             break;
         case PL_COMMAND_SAMPLING_START:
+
+
+//            queueEvent(PL_COMMAND_SAMPLING_START);
+
             break;
         case PL_COMMAND_SAMPLING_STOP:
             break;
@@ -268,7 +268,8 @@ void main(void) {
 
 #pragma vector = PORT2_VECTOR
 __interrupt void Port_2(void) {
-////    P1OUT ^= BIT1;
+    currentCommand = PL_COMMAND_SAMPLING_START;
+//    P1OUT ^= BIT1;
     if (pin_flag ==1) {
         pin_flag=0;
 //        volatile struct timer* timer_item= QT_TIMER_startPeriodicTask(DEPLOY_PROBE_SP, 5000, 100);
@@ -282,17 +283,16 @@ __interrupt void Port_2(void) {
 //
 //        }
 //        timer_item= QT_TIMER_startPeriodicTask(DEPLOY_PROBE_SP, 3000, 100);
-        sweep_settings_t settings;
-        settings.digiPotGain = 0;
-        settings.maxDacVoltage = 3;
-        settings.minDacVoltage = 1;
-        settings.dacOffset = 0;
-        settings.numberOfSamples = 100;
-        QT_SW_conductSweep(&settings);
+//        sweep_settings_t settings;
+//
+//        settings = QT_SW_createSweepSettings(1, 1, 4.5, 50);
+//        QT_SW_conductSweep(&settings);
+
 
         pin_flag=2;
     } else if (pin_flag == 2) {
         pin_flag=0;
+        __delay_cycles(10000);
 
 //        currentCommand = PL_COMMAND_ENUM_COUNT;
 //        handleCommand(PL_COMMAND_ENUM_COUNT);

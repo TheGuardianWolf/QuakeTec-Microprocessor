@@ -11,17 +11,20 @@
 #include "FRAM/QT_FRAM.h"
 #include "Timer/QT_timer.h"
 #include "QT_LPMain.h"
+#include <stdlib.h>
 
 /*
  * Type definitions
  */
 
 typedef struct {
-    float digiPotGain;
-    float minDacVoltage;
-    float maxDacVoltage;
+//    float digiPotGain;
+    int numberOfSweeps;
+    float minSweepVoltage;
+    float maxSweepVoltage;
     int dacOffset;
     int numberOfSamples;
+    float sweepTime;
 } sweep_settings_t;
 
 typedef struct {
@@ -32,19 +35,22 @@ typedef struct {
     uint16_t bufferLength;
 } sweep_data_t;
 
-/*
- * Public functions
- */
+static int QT_SW_sweep(float startSweepVoltage, float endSweepVoltage, int samples, float period, bool useAdc);
+static float QT_SW_adaptiveGain();
 
-/**
- * Initialises DigiPot and DAC before main sweep, returning the settings object that represents.
- */
-sweep_settings_t QT_SW_conductPreSweep();
+static sweep_settings_t QT_SW_presweep();
+void QT_SW_getPlasmaData();
+
+void QT_SW_conductSweep(sweep_settings_t * settings);
+
+sweep_settings_t QT_SW_createSweepSettings(int numSweeps, float maxSweepVoltage, float minSweepVoltage, int numberOfSamples, float sweepTime);
+
+//sweep_settings_t QT_SW_conductPreSweep();
 
 /**
  * Conducts a sweep. When sweep data is available, conductSweep() tells the OBC by calling QT_LP_signalSweepDataReady().
  */
 //sweep_data_t QT_SW_conductSweep(sweep_settings_t settings);
-void QT_SW_conductSweep(sweep_settings_t * settings);
+//void QT_SW_conductSweep(sweep_settings_t * settings);
 
 #endif /* QT_SW_SWEEP_H_ */

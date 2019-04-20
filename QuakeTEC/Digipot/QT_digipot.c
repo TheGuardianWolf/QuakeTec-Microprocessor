@@ -34,15 +34,15 @@ static void setReady(bool high) {
  *
  * If the SPI line is busy this method waits until it is free.
  **/
-static void syncRegister() {
-    // TODO validate timings with o-scope
-    // We need to make this so the method does not block for extended periods of time.
-
-    setReady(true);
-    while(!QT_SPI_transmit((byte *) &registerValue, 2, &DIGIPOT, NULL));
-    while(!QT_SPI_isDataSent());
-    setReady(false);
-}
+//static void syncRegister() {
+//    // TODO validate timings with o-scope
+//    // We need to make this so the method does not block for extended periods of time.
+//
+//    setReady(true);
+//    while(!QT_SPI_transmit((byte *) &registerValue, 2, &DIGIPOT, NULL));
+//    while(!QT_SPI_isDataSent());
+//    setReady(false);
+//}
 
 void QT_DIGIPOT_setGain(float gain) {
     uint16_t data = (uint16_t) (DIGIPOT_SCALE / (gain - 1.0));

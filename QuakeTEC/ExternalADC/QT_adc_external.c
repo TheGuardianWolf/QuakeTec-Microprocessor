@@ -5,32 +5,23 @@
  *      Author: james
  */
 
-#define ADC_LSB 4096
-// TODO find this value. This is the analog value that the DAC is driven to.
-#define ADC_VA 5.0
+#include "QT_adc_external.h"
 
 #define ADC_SHIFT 1
 
-#include "QT_adc_external.h"
-#include "SpiLib/QT_SPI_SpiLib.h"
+static volatile uint16_t adcData;
+static volatile bool doneReceiving;
+static volatile bool doneTransmitting;
 
-static adc_read_func_t currentCallback = NULL;
 
-static uint32_t sendData;
+extern device_t ADC;
 
-static float convertToVoltage(uint16_t raw) {
-    // Steps occur in the middle o
-    return ADC_VA * raw / ADC_LSB;
-}
+static byte sendData[4] = { 0 };
 
 static void adcHandler(const byte *data) {
-    if(currentCallback != NULL) {
-        uint16_t rawADCValue = *((uint16_t *) data);
-
-        float result = convertToVoltage(rawADCValue);
-        (*currentCallback)(result);
-        currentCallback = NULL;
-    }
+    adcData = (data[0]<<8) + data[1];
+    uint16_t a = adcData;
+    doneReceiving = true;
 }
 
 /**
@@ -45,30 +36,53 @@ void QT_EADC_initialise() {
  * This function returns false if the device was busy. If this is the case
  * no action is taken.
  **/
-bool QT_EADC_measureSweepCurrent(adc_read_func_t callback) {
-    sendData = 0 << ADC_SHIFT;
-    currentCallback = callback;
-    return QT_SPI_transmit((byte * ) &sendData, 2, &ADC, NULL);
-}
 
 /**
  * Reads the ADC1 voltage.
  * This function returns false if the device was busy. If this is the case
  * no action is taken.
  **/
-bool QT_EADC_measureFloatVoltage(adc_read_func_t callback) {
-    byte device = 0xffff;;
-    currentCallback = callback;
-    return QT_SPI_transmit((byte *) &sendData, 2, &ADC, NULL);
-}
 
 /**
  * Reads the ADC2 voltage.
  * This function returns false if the device was busy. If this is the case
  * no action is taken.
  **/
-bool QT_EADC_measureSweepVoltage(adc_read_func_t callback) {
-    sendData = 2 << ADC_SHIFT;
-    currentCallback = callback;
-    return QT_SPI_transmit((byte *) &sendData, 2, &ADC, NULL);
+
+void adc_handler(const byte * data) {
+    adcData = (data[0]<<8) + data[1];
+    uint16_t a = adcData;
+    doneReceiving = true;
 }
+
+float getAdcVoltage() {
+    uint16_t result = getAdcValue();
+    float voltage = (float) result * EADC_VOLTAGE / EADC_RESOLUTION;
+    return voltage;
+}
+
+uint16_t getAdcValue() {
+    while (!doneReceiving) {;}
+    uint16_t data = adcData;
+    return adcData;
+}
+
+void QT_adc_doneTransmitting(bool succeeded){
+    doneTransmitting = true;
+}
+
+bool adcRead(AdcPin adcPin) {
+    doneReceiving = false;
+    doneTransmitting = false;
+    uint16_t data = adcData;
+    byte sendData[2] = {adcPin<<3 , 0x00};
+    ADC.receiveHandler = adcHandler;
+    QT_SPI_transmit(sendData, 2, &ADC, QT_adc_doneTransmitting);
+    while (!doneTransmitting) {;}
+    __delay_cycles(400);
+//    while (!QT_SPI_isDataSent(&DAC)) {;}
+    return true;
+
+}
+
+

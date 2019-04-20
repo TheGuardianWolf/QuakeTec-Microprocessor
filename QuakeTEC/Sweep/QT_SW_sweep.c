@@ -7,25 +7,35 @@
  * Defines
  */
 
-#define INITIAL_GAIN 2.0
+const float INITIAL_GAIN = 2.0;
+const float DIGIPOT_MAX_GAIN = 1000.0;
+const float DIGIPOT_MIN_GAIN = 2.0;
+const float SWEEP_MIN_VOLTAGE = -15.0;
+const float SWEEP_MAX_VOLTAGE = 15.0;
+const float SWEEP_MIN_REPEATS = 10;
+const float SWEEP_MAX_REPEATS = 10;
+const float SWEEP_ADC_MID_VOL = (1.25 * EADC_RESOLUTION / EADC_VOLTAGE);
 
-#define DEFAULT_DAC_OFFSET 0
-#define VOLTAGE_MULTIPLE 1024
-#define DAC_MIN_VOLTAGE 0.05
-#define DAC_MAX_VOLTAGE 4.95
-#define DAC_MAX_VALUE 1024
-#define DAC_MIN_VALUE 0
-//#define MIN_SWEEP_VOLTAGE_TARGET 200 // 0.2 V
-//#define MAX_SWEEP_VOLTAGE_TARGET 480 // 4.8 V
-
-#define SWEEP_LENGTH 50.0 // sweep length in ms
-#define NUM_SAMPLES_SWEEP 10
-#define NUM_SAMPLES_PRESWEEP 64
+#define SWEEP_LENGTH 500.0 // sweep length in ms
+#define SWEEP_MAX_NUM_SAMPLES 500
+#define PRESWEEP_LENGTH 150.0
+#define PRESWEEP_MAX_NUM_SAMPLES 20
 
 #define SMOOTH_WINDOW_SIZE 5
 #define NUM_SMOOTH_PASSES 10
 
 #define SWEEP_DATA_NUM_2BYTES_PADDING 2
+
+static volatile float maxSweepValue;
+static volatile float minSweepValue;
+static volatile float digipotGain;
+static volatile float dacOffset;
+
+extern volatile bool sweepFlag;
+
+static uint16_t sweepData[SWEEP_MAX_NUM_SAMPLES] = {1000};
+volatile uint16_t sweepDataLength = 0;
+static volatile float testMultiplier = 0.01;
 
 /*
  * Type definitions
@@ -39,8 +49,8 @@ typedef bool(*adc_retrieve_func_t)(adc_read_func_t callback);
 /**
  * For retrieving voltages from ADC
  */
-static bool adcValueProcessed;
-volatile static uint16_t adcValue;
+//static bool adcValueProcessed;
+//volatile static uint16_t adcValue;
 
 /*
  * Private functions
@@ -49,63 +59,172 @@ volatile static uint16_t adcValue;
 /**
  * Create the default settings object.
  */
+static void QT_SW_setDefaultState() {
+    digipotGain = DIGIPOT_MIN_GAIN;
+    //TODO set digipot to this gain
+    QT_DAC_reset();
 
 
+}
 
-static sweep_settings_t createDefaultSettings() {
-
+sweep_settings_t QT_SW_createSweepSettings(int numSweeps, float minSweepVoltage, float maxSweepVoltage, int numberOfSamples, float sweepTime) {
     sweep_settings_t settings;
-    settings.digiPotGain = INITIAL_GAIN;
-    settings.maxDacVoltage = DAC_MIN_VOLTAGE;
-    settings.minDacVoltage = DAC_MAX_VOLTAGE;
-    settings.dacOffset = DEFAULT_DAC_OFFSET;
-    settings.numberOfSamples = NUM_SAMPLES_SWEEP;
+
+//    dpGain = dpGain >  DIGIPOT_MAX_GAIN ? DIGIPOT_MAX_GAIN : dpGain;
+//    dpGain = dpGain < DIGIPOT_MIN_GAIN ? DIGIPOT_MIN_GAIN : dpGain;
+
+    numSweeps = numSweeps > SWEEP_MAX_REPEATS ? SWEEP_MAX_REPEATS : numSweeps;
+    numSweeps = numSweeps < SWEEP_MAX_REPEATS ? SWEEP_MAX_REPEATS : numSweeps;
+
+    maxSweepVoltage = maxSweepVoltage > SWEEP_MAX_VOLTAGE ? SWEEP_MAX_VOLTAGE : maxSweepVoltage;
+    minSweepVoltage = minSweepVoltage < SWEEP_MIN_VOLTAGE ? SWEEP_MIN_VOLTAGE : minSweepVoltage;
+    int dacOffset = 0;
+
+    numberOfSamples = numberOfSamples > SWEEP_MAX_NUM_SAMPLES ? SWEEP_MAX_NUM_SAMPLES: numberOfSamples;
+
+//    settings.digiPotGain = dpGain;
+    settings.numberOfSweeps = numSweeps;
+    settings.maxSweepVoltage = maxSweepVoltage;
+    settings.minSweepVoltage = minSweepVoltage;
+    settings.dacOffset = dacOffset;
+    settings.numberOfSamples = numberOfSamples;
+    settings.sweepTime = sweepTime;
+    return settings;
+}
+
+//bool QT_SW_setDacSweepValue(sweep_settings_t * settings, int iteration) {
+//    float value;
+//    value = 1024*(settings->minSweepVoltage +
+//            ((float) iteration * (settings->maxSweepVoltage - settings->minSweepVoltage) / settings->numberOfSamples))/5;
+//    uint16_t adcValue = value + settings->dacOffset;
+//    if (adcValue > DAC_MAX_VALUE) {
+//        adcValue = DAC_MAX_VALUE;
+//    } else if (adcValue < DAC_MIN_VALUE) {
+//        adcValue = DAC_MIN_VALUE;
+//    }
+//    //send adc packet
+//    return true;
+//}
+
+static int QT_SW_sweep(float startSweepVoltage, float endSweepVoltage, int samples, float period, bool useAdc) {
+    //code for testing adaptive gain starts
+//    startSweepVoltage = (startSweepVoltage + endSweepVoltage)/2
+
+    //stops
+    volatile struct timer* sp_timer = QT_TIMER_startPeriodicTask(SAMPLE_PROBE, period*samples, period);
+    float sweepVoltage = startSweepVoltage;
+    float increment = (endSweepVoltage - startSweepVoltage) / ((float) samples);
+    float maxRange = startSweepVoltage > endSweepVoltage ? startSweepVoltage : endSweepVoltage;
+    float minRange = startSweepVoltage < endSweepVoltage ? startSweepVoltage : endSweepVoltage;
+    int i = 0;
+    int j =0;
+    while ((sp_timer->command != TIMER_STOP) && (sweepVoltage <= maxRange) && (sweepVoltage >= minRange) && !exitCommand && (i < samples)) {
+        if (sweepFlag) {
+            QT_DAC_setVoltage(sweepVoltage);
+
+            if (useAdc) {
+                //Read sweeping probe
+                adcRead(ADC0);
+                sweepData[i] = getAdcValue();
+//                i++;
+                //Read floating probe
+                adcRead(ADC7);
+//                sweepData[i] = getAdcValue();
+                i++;
+            }
+
+            sweepVoltage = sweepVoltage + increment;
+            sweepFlag = false;
+        }
+
+    }
+    QT_TIMER_stopPeriodicTask(sp_timer);
+
+    return sweepVoltage;
+}
+
+void QT_SW_conductSweep(sweep_settings_t * settings) {
+    float period = (settings->sweepTime)/(settings->numberOfSamples);
+    sweepDataLength = settings->numberOfSamples;
+    int i;
+
+    //for gain testing
+    float dif = 0.001 * digipotGain * 15;
+    float minvol = -dif;
+    float maxvol = dif;
+
+    i = QT_SW_sweep(0, minvol, (int) settings->numberOfSamples / 2, period, false);
+
+    i = QT_SW_sweep(minvol, maxvol, settings->numberOfSamples, period, true);
+
+    i = QT_SW_sweep(maxvol, minvol, (int) settings->numberOfSamples / 2, period, false);
+
+    //end gain testing
+
+//    i = QT_SW_sweep(0, settings->minSweepVoltage, (int) settings->numberOfSamples / 2, period, false);
+//
+//    i = QT_SW_sweep(settings->minSweepVoltage, settings->maxSweepVoltage, settings->numberOfSamples, period, true);
+//
+//    i = QT_SW_sweep(i, 0, (int) settings->numberOfSamples / 2, period, false);
+
+    float f;
+    int a =1;
+    int j = 0;
+    for (j = 0; j < 1000; j++) {
+        f = sweepData[j];
+        a = j;
+    }
+    a++;
+}
+
+
+void QT_SW_getPlasmaData() {
+    QT_SW_setDefaultState();
+    int i;
+
+    sweep_settings_t settings = QT_SW_presweep();
+
+
+
+}
+
+static sweep_settings_t QT_SW_presweep() {
+    int i;
+    float dgain;
+    sweep_settings_t settings = QT_SW_createSweepSettings(1, SWEEP_MIN_VOLTAGE, SWEEP_MAX_VOLTAGE, PRESWEEP_MAX_NUM_SAMPLES, PRESWEEP_LENGTH);
+    dgain = digipotGain;
+
+    for (i = 0; i < 7; i++) {
+        QT_SW_conductSweep(&settings);
+        QT_SW_adaptiveGain();
+        dgain = digipotGain;
+
+    }
+
 
     return settings;
 }
 
-bool QT_SW_setDacSweepValue(sweep_settings_t * settings, int iteration) {
-    float value;
-    value = 1024*(settings->minDacVoltage +
-            ((float) iteration * (settings->maxDacVoltage - settings->minDacVoltage) / settings->numberOfSamples))/5;
-    uint16_t adcValue = value + settings->dacOffset;
-    if (adcValue > DAC_MAX_VALUE) {
-        adcValue = DAC_MAX_VALUE;
-    } else if (adcValue < DAC_MIN_VALUE) {
-        adcValue = DAC_MIN_VALUE;
-    }
-    //send adc packet
-    return true;
+static float QT_SW_adaptiveGain() {
+    float gain;
+    float ifNegValue = 10000;
+    uint16_t currentMax = QT_COM_max(sweepData, sweepDataLength);
+    uint16_t currentMin = QT_COM_min(sweepData, sweepDataLength);
+
+    float ionCurrrentGain = (SWEEP_ADC_MID_VOL - EADC_MIN_VALUE) / ( SWEEP_ADC_MID_VOL - (float) currentMin);
+    float electronCurrrentGain = (EADC_MAX_VALUE - SWEEP_ADC_MID_VOL) / ((float) currentMax - SWEEP_ADC_MID_VOL);
+    ionCurrrentGain = ionCurrrentGain <= 0 ? ifNegValue : ionCurrrentGain;
+    electronCurrrentGain = electronCurrrentGain <= 0 ? ifNegValue : electronCurrrentGain;
+
+    gain = ionCurrrentGain > electronCurrrentGain ? electronCurrrentGain : ionCurrrentGain;
+
+    gain = gain > 10 ? 10 : gain;
+    digipotGain = digipotGain * gain > DIGIPOT_MAX_GAIN ? DIGIPOT_MAX_GAIN : digipotGain * gain;
+    digipotGain = digipotGain < DIGIPOT_MIN_GAIN ? DIGIPOT_MIN_GAIN : digipotGain;
+
+    //TODO set new digipot gain
+    return gain;
 }
-
-void QT_SW_conductSweep(sweep_settings_t * settings) {
-    float period = SWEEP_LENGTH/(settings->numberOfSamples);
-    volatile struct timer* sp_timer = QT_TIMER_startPeriodicTask(SAMPLE_PROBE, SWEEP_LENGTH, period);
-    int i = 0;
-    while ((sp_timer->command != TIMER_STOP) && (i < settings->numberOfSamples) && !exitCommand) {
-        if (sweepFlag) {
-            QT_SW_setDacSweepValue(settings, i);
-            //read SP
-            //read FP
-
-            i++;
-            sweepFlag = false;
-        }
-    }
-    int a =1;
-    QT_TIMER_stopPeriodicTask(sp_timer);
-    sp_timer = QT_TIMER_startPeriodicTask(SET_DAC, SWEEP_LENGTH, period);
-    while ((sp_timer->command != TIMER_STOP) && (i > 0) && !exitCommand) {
-        if (dacFlag) {
-            QT_SW_setDacSweepValue(settings, i);
-            i--;
-            dacFlag = false;
-        }
-    }
-}
-
-
-
 
 /**
  * Sets initial values of DigiPot and DAC.
@@ -116,7 +235,7 @@ void QT_SW_conductSweep(sweep_settings_t * settings) {
 //    QT_DIGIPOT_setGain(settings.digiPotGain);
 //
 //    // Set starting voltage on DAC
-//    QT_DAC_setOutputValue(settings.minDacVoltage);
+//    QT_DAC_setOutputValue(settings.minSweepVoltage);
 //}
 //
 //// TODO check exit flags before doing stuff
@@ -160,13 +279,13 @@ void QT_SW_conductSweep(sweep_settings_t * settings) {
 //
 //    sweep_data_t sweepData;
 //    uint16_t dacVoltage;
-//    uint16_t sampleWidth = (settings.maxDacVoltage - settings.maxDacVoltage) * VOLTAGE_MULTIPLE / numSamples;
+//    uint16_t sampleWidth = (settings.maxSweepVoltage - settings.maxSweepVoltage) * VOLTAGE_MULTIPLE / numSamples;
 //    uint8_t sampleCounter = 0; // determines when to take readings from the ADC
 //
 //    sweepData.bufferLength = SWEEP_DATA_NUM_2BYTES_PADDING;
 //
 //    // Sweep up from start DAC value to end DAC value
-//    for (dacVoltage = settings.minDacVoltage; dacVoltage <= settings.maxDacVoltage; dacVoltage++) {
+//    for (dacVoltage = settings.minSweepVoltage; dacVoltage <= settings.maxSweepVoltage; dacVoltage++) {
 //
 //        QT_DAC_setOutputValue(dacVoltage);              // set DAC voltage
 //        sampleCounter++;
@@ -181,7 +300,7 @@ void QT_SW_conductSweep(sweep_settings_t * settings) {
 //    }
 //
 //    // Sweep down from end DAC value to start DAC value TODO make this async
-//    for (dacVoltage = settings.maxDacVoltage; dacVoltage <= settings.minDacVoltage; dacVoltage--) {
+//    for (dacVoltage = settings.maxSweepVoltage; dacVoltage <= settings.minSweepVoltage; dacVoltage--) {
 //        QT_DAC_setOutputValue(dacVoltage);              // set DAC voltage
 //    }
 //
@@ -189,7 +308,7 @@ void QT_SW_conductSweep(sweep_settings_t * settings) {
 //}
 //
 ///**
-// * Sweeps between sweepSettings.minDacVoltage and sweepSettings.maxDacVoltage and uses the maximum LP voltage to
+// * Sweeps between sweepSettings.minSweepVoltage and sweepSettings.maxSweepVoltage and uses the maximum LP voltage to
 // * set digiPot resistance for the sweep.
 // */
 //static void setPreSweepDigiPotGain(sweep_settings_t *sweepSettingsPtr) {
@@ -262,8 +381,8 @@ void QT_SW_conductSweep(sweep_settings_t * settings) {
 //
 //    // Set DAC limits
 //    uint16_t targetThirdOfDacRange = secondInflection - firstInflection;
-//    sweepSettingsPtr->minDacVoltage = firstInflection - targetThirdOfDacRange;
-//    sweepSettingsPtr->maxDacVoltage = secondInflection + targetThirdOfDacRange;
+//    sweepSettingsPtr->minSweepVoltage = firstInflection - targetThirdOfDacRange;
+//    sweepSettingsPtr->maxSweepVoltage = secondInflection + targetThirdOfDacRange;
 //}
 //
 ///**

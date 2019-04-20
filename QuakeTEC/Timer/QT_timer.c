@@ -1,5 +1,6 @@
 
 #include "QT_timer.h"
+#include <stdio.h>
 //static volatile task_func taskTurnOn = NULL;
 //static volatile task_func taskTurnOff = NULL;
 //
@@ -21,8 +22,8 @@ static int ID_select[4] = {1, 2, 4, 8};
 
 static int TBIDEX_select[8] = {1, 2, 3, 4, 5, 6, 7, 8};
 
-extern volatile bool sweepFlag = false;
-extern volatile bool dacFlag = false;
+volatile bool sweepFlag = false;
+volatile bool dacFlag = false;
 
 /*
  * CCR1 is used to turn on the PWM line
