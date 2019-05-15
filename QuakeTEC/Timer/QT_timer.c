@@ -1,40 +1,21 @@
 
 #include "QT_timer.h"
 #include <stdio.h>
-//static volatile task_func taskTurnOn = NULL;
-//static volatile task_func taskTurnOff = NULL;
-//
-//static volatile task_func periodicTask = NULL;
-
-static volatile uint16_t overflowsRemaining = 0;
-
-volatile struct timer timer0 = {0, TIMER_STOP, 0, 0, 0};
-volatile struct timer timer1 = {1, TIMER_STOP, 0, 0, 0};
-volatile struct timer timer2 = {2, TIMER_STOP, 0, 0, 0};
-volatile struct timer timer3 = {3, TIMER_STOP, 0, 0, 0};
-
-static volatile int time_conversion = 5;
-
-//Either smclk or aclk
-static float clock_select[2] = {0.00025, 0.1};
-
-static int ID_select[4] = {1, 2, 4, 8};
-
-static int TBIDEX_select[8] = {1, 2, 3, 4, 5, 6, 7, 8};
 
 volatile bool sweepFlag = false;
 volatile bool dacFlag = false;
 
-/*
- * CCR1 is used to turn on the PWM line
- * CCR2 is used to wake from sleep
- * Timer reset is used to turn off the PWM line
- */
+//Either smclk or aclk
+const float clock_select[2] = {0.00025, 0.1};
+const int ID_select[4] = {1, 2, 4, 8};
+const int TBIDEX_select[8] = {1, 2, 3, 4, 5, 6, 7, 8};
 
-// The timer length in clock cycles
-#define TIMER_LENGTH 10000
+static volatile struct timer timer0 = {0, TIMER_STOP, 0, 0, 0};
+static volatile struct timer timer1 = {1, TIMER_STOP, 0, 0, 0};
+static volatile struct timer timer2 = {2, TIMER_STOP, 0, 0, 0};
+static volatile struct timer timer3 = {3, TIMER_STOP, 0, 0, 0};
 
-void QT_TIMER_initialise(volatile struct timer *timer_item, unsigned int ctl_reg, unsigned int tbx_reg, float ticks) { //, int CTL_register, int TBI_register
+static void QT_TIMER_initialise(volatile struct timer *timer_item, unsigned int ctl_reg, unsigned int tbx_reg, float ticks) { //, int CTL_register, int TBI_register
     int timer_no = timer_item->id;
     uint16_t period = (uint16_t) ticks;
     switch(timer_no) {
@@ -71,28 +52,7 @@ void QT_TIMER_initialise(volatile struct timer *timer_item, unsigned int ctl_reg
 //    __no_operation();
 }
 
-void binary_print(int value) {
-    int r, temp;
-    int i=0;
-    temp = value;
-    for (i=0; i<16; i++) {
-        r = BIT0 & temp;
-        if (r > 0) {
-            P1DIR |= BIT1;
-            P1OUT |= BIT1;
-        } else {
-            P1DIR |= BIT0;
-            P1OUT |= BIT0;
-        }
-        temp = temp>>1;
-        __delay_cycles(1000000);
-        P1OUT = 0;
-        __delay_cycles(1000000);
-    }
-    __delay_cycles(3000000);
-}
-
-uint16_t QT_TIMER_setup(volatile struct timer *timer_item, uint16_t duration, float period) {
+static uint16_t QT_TIMER_setup(volatile struct timer *timer_item, uint16_t duration, float period) {
 //    volatile uint32_t smclk_speed = CS_getSMCLK();
 //    clock_select[0] = 1000/smclk_speed;
     float compare_value=0;
@@ -138,13 +98,13 @@ uint16_t QT_TIMER_setup(volatile struct timer *timer_item, uint16_t duration, fl
     return 1;
 }
 
-volatile struct timer* QT_sleep(float period) {
+volatile struct timer* QT_TIMER_sleep(float period) {
     uint16_t duration = 0;
     timer_command t_command = TIMER_SLEEP;
     return QT_TIMER_startPeriodicTask(t_command, duration, period);
 }
 
-int QT_TIMER_sleep(volatile struct timer* timer_item, float period) {
+int QT_TIMER_timer_sleep(volatile struct timer* timer_item, float period) {
     uint16_t duration = 0;
     timer_command t_command = TIMER_SLEEP;
     if (timer_item->command == TIMER_STOP) {
@@ -237,7 +197,7 @@ volatile struct timer* QT_TIMER_startPWM(timer_command t_command, uint16_t durat
     return pwm_timer;
 }
 
-void QT_TIMER_handlePeriodicTask(volatile struct timer *timer_item) {
+static void QT_TIMER_handlePeriodicTask(volatile struct timer *timer_item) {
     if (timer_item->runtime > 0) {
         timer_item->runtime --;
     } else {
@@ -246,12 +206,10 @@ void QT_TIMER_handlePeriodicTask(volatile struct timer *timer_item) {
     timer_command t_command = timer_item->command;
     switch (t_command) {
     case DEPLOY_PROBE_SP:
-        P1DIR |= BIT0;
-        P1OUT ^= BIT0;
+        QT_BW_toggleSpBurnwire();
         break;
     case DEPLOY_PROBE_FP:
-        P1DIR |= BIT1;
-        P1OUT ^= BIT1;
+        QT_BW_toggleFpBurnwire();
         break;
     case TIMER_SLEEP:
         break;

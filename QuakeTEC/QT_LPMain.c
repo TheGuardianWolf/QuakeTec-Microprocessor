@@ -33,6 +33,7 @@ void initialise() {
     // Stop watchdog timer
     WDT_A_hold(WDT_A_BASE);
 
+
 //    CSCTL4 = 0;
 //    CSCTL4 |= BIT9 + SELMS_0;
 
@@ -50,10 +51,34 @@ void initialise() {
     GPIO_setAsInputPinWithPullDownResistor(GPIO_PORT_P4, 0xff);
     GPIO_setAsInputPinWithPullDownResistor(GPIO_PORT_P5, GPIO_PIN0 | GPIO_PIN1);
 
+    //Configure default states for other GPIOs
+
+
+
+//    P3DIR |= (BIT4 | BIT3 | BIT2);
+//    P3REN |= (BIT1 | BIT0);
+//
+//    P1DIR |= (BIT2 | BIT1);
+//
+//    P2DIR |= (BIT6 | BIT5 | BIT4);
+//    P2OUT |= (BIT6 | BIT5 | BIT4);
+//    P2REN &= ~(BIT7);
+//
+//    P4DIR |= (BIT6 | BIT5 | BIT4 | BIT2);
+//    P4OUT |= (BIT7 | BIT4);
+//    P4REN |= BIT7;
+//    P4REN &= ~(BIT3 | BIT1 | BIT0);
+
+    P4DIR |= BIT4;
+    P4OUT |= BIT4;
+
+    QT_PWR_turnOffGuard();
+    QT_PWR_turnOn16V();
+
+    QT_BW_reset();
+
     QT_IADC_initialise();
     QT_SPI_initialise();
-
-     QT_EADC_initialise();
 
     // Disable the GPIO power-on default high-impedance mode
     // to activate previously configured port settings
@@ -66,6 +91,8 @@ void initialise() {
     smclk_speed = CS_getSMCLK();
     __enable_interrupt();
     __no_operation();
+
+    QT_EADC_initialise();
 }
 
 /**
@@ -204,34 +231,54 @@ void setupDeploymentTest() {
 /*
  * This file handles the communication with the OBC, this is the main event loop that handles
  */
+void asdf(bool i) {
+    i = false;
+}
+
+extern device_t DIGIPOT;
 
 static volatile int pin_flag=1;
 void main(void) {
     initialise();
 
     startListening();
-    sweep_settings_t settings;
+//    sweep_settings_t settings;
 
-    setupDeploymentTest();
-//    while(true) {
-//        adcRead(ADC0);
-//        float data = getAdcVoltage();
-//        QT_DAC_setVoltage(data);
-//
-////        __delay_cycles(40000);
+//    while (true) {
+//        QT_SW_getPlasmaData();
+////        QT_SW_conductSweep(&settings);
 //    }
+//    currentCommand = PL_COMMAND_DEPLOY;
+//    handleCommand(PL_COMMAND_DEPLOY);
+    uint16_t data;
+//    P3DIR = BIT2;
+//    P3OUT = BIT2;
+//    P1DIR |= BIT2;
+//    P1OUT |= BIT2;
+    QT_PWR_turnOnGuard();
 
-//    settings = QT_SW_createSweepSettings(1, -15, 15, 10);
 
-    while (true) {
-        QT_SW_getPlasmaData();
-//        QT_SW_conductSweep(&settings);
+    while(true) {
+//        QT_SPI_transmit(sendData4, 2, &DIGIPOT, asdf);
+//        __delay_cycles(10000000);
+////        QT_SPI_transmit(sendData5, 2, &DIGIPOT, asdf);
+//        __delay_cycles(10000000);
+
+//        QT_BW_deploy();
+//        QT_DAC_setVoltage(7);
+
+        QT_EADC_adcRead(ADC1);
+        data = QT_EADC_getAdcValue();
+        __delay_cycles(100000);
+//        QT_SW_getPlasmaData();
     }
+
 
     while(true) {
 //        QT_EADC_measureSweepCurrent(&adcHandler);
 //         Wait until a command has been queued
         while(!commandRunning);
+
 
 //         These command functions are blocking.
         switch(currentCommand) {
@@ -262,13 +309,14 @@ void main(void) {
             break;
         }
 
+
         commandRunning = false;
     }
 }
 
 #pragma vector = PORT2_VECTOR
 __interrupt void Port_2(void) {
-    currentCommand = PL_COMMAND_SAMPLING_START;
+
 //    P1OUT ^= BIT1;
     if (pin_flag ==1) {
         pin_flag=0;

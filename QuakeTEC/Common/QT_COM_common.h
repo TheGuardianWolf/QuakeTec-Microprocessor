@@ -39,4 +39,7 @@ uint16_t QT_COM_max(uint16_t *values, uint16_t length);
  */
 uint16_t QT_COM_min(uint16_t *values, uint16_t length);
 
+
+void binary_print(int value);
+
 #endif /* COMMON_QT_COMMON_C_ */

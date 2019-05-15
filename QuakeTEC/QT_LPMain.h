@@ -8,15 +8,16 @@
 #ifndef QT_LPMAIN_H_
 #define QT_LPMAIN_H_
 
-#include <InternalADC/QT_adc_internal.h>
 #include "driverlib.h"
 
-#include "ExternalADC/QT_adc_external.h"
+#include "InternalADC/QT_adc_internal.h"
+#include "ExternalADC/QT_EADC.h"
 #include "SpiLib/QT_SPI_Protocol.h"
 #include "SpiLib/QT_SPI_SpiLib.h"
 #include "BurnWire/QT_BW_BurnWire.h"
 #include "Sweep/QT_SW_sweep.h"
 #include "Timer/QT_timer.h"
+#include "PowerControl/QT_PWR_power.h"
 
 typedef struct //function_flags
 {

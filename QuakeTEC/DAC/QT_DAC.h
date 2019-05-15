@@ -9,9 +9,10 @@
 #define QT_DAC_H_
 
 #include "SpiLib/QT_SPI_SpiLib.h"
-/**
- * This method sends a particular bit value to the DAC
- **/
+
+#define DAC_RESOLUTION 4095.0
+#define DAC_VOLTAGE 3.3
+
 void QT_DAC_setVoltage(float value);
 void QT_DAC_reset();
 

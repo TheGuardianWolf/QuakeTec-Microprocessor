@@ -35,19 +35,15 @@ struct timer {
     uint16_t duty_period;
 };
 
-volatile struct timer* QT_TIMER_startPeriodicTask(timer_command t_command, uint16_t duration, float period);
-void QT_TIMER_stopPeriodicTask(volatile struct timer *timer_item);
-volatile struct timer* QT_TIMER_startPWM(timer_command t_command, uint16_t duration, float period, uint16_t duty);
-volatile struct timer* QT_sleep(float period);
-int QT_TIMER_sleep(volatile struct timer* timer_item, float period);
-
-uint16_t QT_TIMER_timer_setup(volatile struct timer *timer_item, uint16_t duration, float period);
-void QT_TIMER_initialise(volatile struct timer *timer_item, unsigned int ctl_reg, unsigned int tbx_reg, float period);//, int CTL_register, int TBI_register
-void QT_TIMER_handlePeriodicTask(volatile struct timer *);
-void QT_TIMER_resetTaskFlag(timer_command t_command);
-
 extern volatile bool sweepFlag;
 extern volatile bool dacFlag;
 
+volatile struct timer* QT_TIMER_startPeriodicTask(timer_command t_command, uint16_t duration, float period);
+void QT_TIMER_stopPeriodicTask(volatile struct timer *timer_item);
+volatile struct timer* QT_TIMER_startPWM(timer_command t_command, uint16_t duration, float period, uint16_t duty);
+volatile struct timer* QT_TIMER_sleep(float period);
+int QT_TIMER_timer_sleep(volatile struct timer* timer_item, float period);
+
+void QT_TIMER_resetTaskFlag(timer_command t_command);
 
 #endif /* TIMER_QT_TIMER_H_ */

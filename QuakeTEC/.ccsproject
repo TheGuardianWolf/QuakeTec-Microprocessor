@@ -11,8 +11,8 @@
 	<rts value="libc.a"/>
 	<createSlaveProjects value=""/>
 	<templateProperties value="id=eusci_a_spi_ex1_master.projectspec.eusci_a_spi_ex1_master"/>
-	<origin value="C:/Users/nayra/OneDrive - The University of Auckland/Documents OD/APSS/Build/Resources/Langmuir Probe/Payload Code/SPILib"/>
+	<origin value="C:\Users\nayra\Documents\LP_Code\QuakeTEC"/>
 	<filesToOpen value=""/>
 	<connection value="common/targetdb/connections/TIMSP430-USB.xml"/>
-	<isTargetManual value="false"/>
+	<isTargetManual value="true"/>
 </projectOptions>

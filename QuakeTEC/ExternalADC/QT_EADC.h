@@ -1,10 +1,3 @@
-/*
- * QT_adc_external.h
- *
- *  Created on: 24/02/2019
- *      Author: james
- */
-
 #ifndef EXTERNALADC_QT_ADC_EXTERNAL_H_
 #define EXTERNALADC_QT_ADC_EXTERNAL_H_
 
@@ -27,26 +20,12 @@ typedef enum {
     ADC7,
 } AdcPin;
 
+bool QT_EADC_adcRead(AdcPin adcPin);
 
+uint16_t QT_EADC_getAdcValue();
 
-typedef void(*adc_read_func_t)(float data);
-bool adcRead(AdcPin adcPin);
+float QT_EADC_getAdcVoltage();
 
 void QT_EADC_initialise();
 
-uint16_t getAdcValue();
-
-/**
- * Reads the sweep current in A from the sweeping probe.
- * This function returns false if the device was busy. If this is the case
- * no action is taken.
- **/
-
-/**
- * Reads the output from the DAC in V.
- * This function returns false if the device was busy. If this is the case
- * no action is taken.
- **/
-float getAdcVoltage();
-
-#endif /* EXTERNALADC_QT_ADC_EXTERNAL_H_ */
+#endif

@@ -38,3 +38,24 @@ uint16_t QT_COM_min(uint16_t *values, uint16_t length) {
 
     return currentMin;
 }
+
+void binary_print(int value) {
+    int r, temp;
+    int i=0;
+    temp = value;
+    for (i=0; i<16; i++) {
+        r = BIT0 & temp;
+        if (r > 0) {
+            P1DIR |= BIT1;
+            P1OUT |= BIT1;
+        } else {
+            P1DIR |= BIT0;
+            P1OUT |= BIT0;
+        }
+        temp = temp>>1;
+        __delay_cycles(1000000);
+        P1OUT = 0;
+        __delay_cycles(1000000);
+    }
+    __delay_cycles(3000000);
+}
