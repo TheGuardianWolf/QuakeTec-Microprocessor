@@ -2,7 +2,6 @@
 #define EVENT_QUEUE_HEADER_LENGTH 2
 #include "QT_LPMain.h"
 
-
 // Event buffer code. The buffer is on
 byte eventQueue[EVENT_QUEUE_LENGTH + EVENT_QUEUE_HEADER_LENGTH];
 int eventQueueStart = EVENT_QUEUE_LENGTH;
@@ -33,6 +32,9 @@ void initialise() {
     // Stop watchdog timer
     WDT_A_hold(WDT_A_BASE);
 
+    // Disable the GPIO power-on default high-impedance mode
+    // to activate previously configured port settings
+    PMM_unlockLPM5();
 
 //    CSCTL4 = 0;
 //    CSCTL4 |= BIT9 + SELMS_0;
@@ -72,6 +74,8 @@ void initialise() {
     P4DIR |= BIT4;
     P4OUT |= BIT4;
 
+    SPIMaster_Init();
+
     QT_PWR_turnOffGuard();
     QT_PWR_turnOn16V();
 
@@ -80,9 +84,8 @@ void initialise() {
     QT_IADC_initialise();
     QT_SPI_initialise();
 
-    // Disable the GPIO power-on default high-impedance mode
-    // to activate previously configured port settings
-    PMM_unlockLPM5();
+    QT_DIGIPOT_init();
+
 
     // Enable interrupts
 
@@ -235,41 +238,48 @@ void asdf(bool i) {
     i = false;
 }
 
-extern device_t DIGIPOT;
+inline void Delay_us(uint32_t u32_us)
+{
+//    if (u16_us == 0) return;
+//    float f = u16_us;
+//    f /= 1000;
+//    volatile struct timer* t1 = QT_sleep(f);
+//    while (t1->command != TIMER_STOP)
+//        ;
+
+    u32_us /= 592;
+    uint32_t u32_i;
+    for (u32_i = 0; u32_i < CS_getMCLK() / 1000000 * u32_us; u32_i += 4)
+        _delay_cycles(1);
+}
 
 static volatile int pin_flag=1;
 void main(void) {
     initialise();
-
     startListening();
-//    sweep_settings_t settings;
 
-//    while (true) {
-//        QT_SW_getPlasmaData();
-////        QT_SW_conductSweep(&settings);
-//    }
-//    currentCommand = PL_COMMAND_DEPLOY;
-//    handleCommand(PL_COMMAND_DEPLOY);
-    uint16_t data;
+
+    uint8_t status;
+
+    float gain = 100;
 //    P3DIR = BIT2;
 //    P3OUT = BIT2;
 //    P1DIR |= BIT2;
 //    P1OUT |= BIT2;
     QT_PWR_turnOnGuard();
-
+    uint16_t data = 0x03ff;
 
     while(true) {
-//        QT_SPI_transmit(sendData4, 2, &DIGIPOT, asdf);
-//        __delay_cycles(10000000);
-////        QT_SPI_transmit(sendData5, 2, &DIGIPOT, asdf);
-//        __delay_cycles(10000000);
+//        QT_DIGIPOT_setGain(gain);
+//        AD5292_Set(data);
+
 
 //        QT_BW_deploy();
 //        QT_DAC_setVoltage(7);
 
-        QT_EADC_adcRead(ADC1);
-        data = QT_EADC_getAdcValue();
-        __delay_cycles(100000);
+//        QT_EADC_adcRead(ADC1);
+//        data = QT_EADC_getAdcValue();
+//        __delay_cycles(100000);
 //        QT_SW_getPlasmaData();
     }
 

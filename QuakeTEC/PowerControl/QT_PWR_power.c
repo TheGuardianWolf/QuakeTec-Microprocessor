@@ -12,7 +12,6 @@
 void QT_PWR_turnOn16V( ) {
     GPIO_setAsOutputPin(POWER_16V_PORT, POWER_16V_PIN);
     GPIO_setOutputHighOnPin(POWER_16V_PORT, POWER_16V_PIN);
-    int a =1;
 }
 
 void QT_PWR_turnOff16V() {

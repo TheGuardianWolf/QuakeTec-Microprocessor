@@ -4,7 +4,7 @@ extern volatile bool sweepFlag;
 
 #define SWEEP_LENGTH 500.0 // sweep length in ms
 #define SWEEP_MAX_NUM_SAMPLES 256
-#define PRESWEEP_LENGTH 150.0
+#define PRESWEEP_LENGTH 100.0
 #define PRESWEEP_MAX_NUM_SAMPLES 50
 
 #define SMOOTH_WINDOW_SIZE 5
@@ -32,7 +32,7 @@ static uint16_t sweepData[SWEEP_MAX_NUM_SAMPLES] = {1000};
 
 static void QT_SW_setDefaultState() {
     digipotGain = DIGIPOT_MIN_GAIN;
-    //TODO set digipot to this gain
+    QT_DIGIPOT_setGain(digipotGain);
     QT_DAC_reset();
 }
 
@@ -44,24 +44,29 @@ static int QT_SW_sweep(float startSweepVoltage, float endSweepVoltage, int sampl
     float minRange = startSweepVoltage < endSweepVoltage ? startSweepVoltage : endSweepVoltage;
     int i = 0;
     int j =0;
-    while ((sp_timer->command != TIMER_STOP) && (sweepVoltage <= maxRange) && (sweepVoltage >= minRange) && !exitCommand && (i < samples)) {
-        if (sweepFlag) {
-            QT_DAC_setVoltage(sweepVoltage);
+    uint16_t value;
+//    while ((sp_timer->command != TIMER_STOP)) { // && (sweepVoltage <= maxRange) && (sweepVoltage >= minRange) && !exitCommand && (i < samples))
+    for (i = 0; i<samples; i++) {
+//        if (sweepFlag) {
+        __delay_cycles(100);
+        value = ((float) i/((float) samples)) * 4096;
+        DAC121S101_Set(value);
+//            QT_DAC_setVoltage(sweepVoltage);
 
-            if (useAdc) {
-                //Read sweeping probe
-                QT_EADC_adcRead(ADC0);
-                sweepData[i] = QT_EADC_getAdcValue();
+//            if (useAdc) {
+//                //Read sweeping probe
+////                sweepData[i] = QT_EADC_getAdcValue(ADC0);
+////                sweepData[i] = QT_EADC_getAdcValue();
+////                i++;
+//                //Read floating probe
+////                QT_EADC_getAdcValue(ADC7);
+////                sweepData[i] = getAdcValue();
 //                i++;
-                //Read floating probe
-                QT_EADC_adcRead(ADC7);
-//                sweepData[i] = getAdcValue();
-                i++;
-            }
+//            }
 
             sweepVoltage = sweepVoltage + increment;
             sweepFlag = false;
-        }
+//        }
 
     }
     QT_TIMER_stopPeriodicTask(sp_timer);
@@ -123,24 +128,22 @@ static float QT_SW_adaptiveGain() {
     digipotGain = digipotGain < DIGIPOT_MIN_GAIN ? DIGIPOT_MIN_GAIN : digipotGain;
 
     //TODO set new digipot gain
+    QT_DIGIPOT_setGain(digipotGain);
+
     return gain;
 }
 
 static sweep_settings_t QT_SW_presweep() {
     int i;
-    float dgain;
+    float dgain, gainMultiplier;
     sweep_settings_t settings = QT_SW_createSweepSettings(1, SWEEP_MIN_VOLTAGE, SWEEP_MAX_VOLTAGE, PRESWEEP_MAX_NUM_SAMPLES, PRESWEEP_LENGTH);
     dgain = digipotGain;
 
     for (i = 0; i < 7; i++) {
         QT_SW_conductSweep(&settings);
-        QT_SW_adaptiveGain();
+        gainMultiplier = QT_SW_adaptiveGain();
         dgain = digipotGain;
-
     }
-
-
-
     return settings;
 }
 
@@ -172,6 +175,8 @@ void QT_SW_getPlasmaData() {
 
 //    sweep_settings_t settings = QT_SW_presweep();
     sweep_settings_t settings = QT_SW_createSweepSettings(10, -13.0, 13.0, PRESWEEP_MAX_NUM_SAMPLES, PRESWEEP_LENGTH);
+
+//    __delay_cycles(1000000);
     QT_SW_conductSweep(&settings);
 
 }

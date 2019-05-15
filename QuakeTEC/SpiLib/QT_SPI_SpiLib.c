@@ -90,59 +90,59 @@ static byte const *masterTransmitStopPtr, *slaveTransmitStopPtr;
 /**
  * Sets up the MSP430 as a master device for communication with ADC, DAC and DigiPot.
  */
-static void initialiseMaster() {
-    const uint8_t port = GPIO_PORT_P4;
-
-    const uint8_t mosi = GPIO_PIN6;
-    const uint8_t miso = GPIO_PIN7;
-    const uint8_t clk = GPIO_PIN5;
-
-    // Set all of the device chip selects at output
-    GPIO_setAsOutputPin(DIGIPOT.csPort, DIGIPOT.csPin);
-    GPIO_setAsOutputPin(DAC.csPort, DAC.csPin);
-    GPIO_setAsOutputPin(ADC.csPort, ADC.csPin);
-
-    // Deactivate all chip selects
-    GPIO_setOutputHighOnPin(DIGIPOT.csPort, DIGIPOT.csPin);
-    GPIO_setOutputHighOnPin(DAC.csPort, DAC.csPin);
-    GPIO_setOutputHighOnPin(ADC.csPort, ADC.csPin);
-
-    GPIO_setAsPeripheralModuleFunctionInputPin(
-            port,
-            miso,
-            GPIO_PRIMARY_MODULE_FUNCTION
-    );
-
-    GPIO_setAsPeripheralModuleFunctionOutputPin(
-            port,
-            mosi | clk,
-            GPIO_PRIMARY_MODULE_FUNCTION
-    );
-
-    // Initialize Master
-    EUSCI_B_SPI_initMasterParam param = {0};
-    param.selectClockSource = EUSCI_B_SPI_CLOCKSOURCE_SMCLK;
-    param.clockSourceFrequency = CS_getSMCLK();
-    param.desiredSpiClock = SPI_CLK_FREQUENCY;
-    param.msbFirst = EUSCI_B_SPI_MSB_FIRST;
-    param.clockPhase = EUSCI_B_SPI_PHASE_DATA_CHANGED_ONFIRST_CAPTURED_ON_NEXT;
-    param.clockPolarity = EUSCI_B_SPI_CLOCKPOLARITY_INACTIVITY_HIGH;
-    param.spiMode = EUSCI_B_SPI_3PIN;
-    EUSCI_B_SPI_initMaster(EUSCI_B1_BASE, &param);
-
-    // Enable SPI module
-    EUSCI_B_SPI_enable(EUSCI_B1_BASE);
-
-    GPIO_setAsPeripheralModuleFunctionInputPin(
-            port,
-            miso,
-            GPIO_PRIMARY_MODULE_FUNCTION
-    );
-
-    P4DIR &= ~BIT7;
-    P4REN |= BIT7;
-    P4OUT |= BIT7;
-}
+//static void initialiseMaster() {
+//    const uint8_t port = GPIO_PORT_P4;
+//
+//    const uint8_t mosi = GPIO_PIN6;
+//    const uint8_t miso = GPIO_PIN7;
+//    const uint8_t clk = GPIO_PIN5;
+//
+//    // Set all of the device chip selects at output
+//    GPIO_setAsOutputPin(DIGIPOT.csPort, DIGIPOT.csPin);
+//    GPIO_setAsOutputPin(DAC.csPort, DAC.csPin);
+//    GPIO_setAsOutputPin(ADC.csPort, ADC.csPin);
+//
+//    // Deactivate all chip selects
+//    GPIO_setOutputHighOnPin(DIGIPOT.csPort, DIGIPOT.csPin);
+//    GPIO_setOutputHighOnPin(DAC.csPort, DAC.csPin);
+//    GPIO_setOutputHighOnPin(ADC.csPort, ADC.csPin);
+//
+//    GPIO_setAsPeripheralModuleFunctionInputPin(
+//            port,
+//            miso,
+//            GPIO_PRIMARY_MODULE_FUNCTION
+//    );
+//
+//    GPIO_setAsPeripheralModuleFunctionOutputPin(
+//            port,
+//            mosi | clk,
+//            GPIO_PRIMARY_MODULE_FUNCTION
+//    );
+//
+//    // Initialize Master
+//    EUSCI_B_SPI_initMasterParam param = {0};
+//    param.selectClockSource = EUSCI_B_SPI_CLOCKSOURCE_SMCLK;
+//    param.clockSourceFrequency = CS_getSMCLK();
+//    param.desiredSpiClock = SPI_CLK_FREQUENCY;
+//    param.msbFirst = EUSCI_B_SPI_MSB_FIRST;
+//    param.clockPhase = EUSCI_B_SPI_PHASE_DATA_CHANGED_ONFIRST_CAPTURED_ON_NEXT;
+//    param.clockPolarity = EUSCI_B_SPI_CLOCKPOLARITY_INACTIVITY_HIGH;
+//    param.spiMode = EUSCI_B_SPI_3PIN;
+//    EUSCI_B_SPI_initMaster(EUSCI_B1_BASE, &param);
+//
+//    // Enable SPI module
+//    EUSCI_B_SPI_enable(EUSCI_B1_BASE);
+//
+//    GPIO_setAsPeripheralModuleFunctionInputPin(
+//            port,
+//            miso,
+//            GPIO_PRIMARY_MODULE_FUNCTION
+//    );
+//
+//    P4DIR &= ~BIT7;
+//    P4REN |= BIT7;
+//    P4OUT |= BIT7;
+//}
 
 /**
  * Sets up MSP430 as slave device for communication with OBC.
@@ -188,12 +188,12 @@ static void initialiseSlave() {
 
 static void enableAllInterrupts() {
     // Clear receive interrupt flag for communication with slaves
-    EUSCI_B_SPI_clearInterrupt(EUSCI_B1_BASE,
-                               EUSCI_B_SPI_RECEIVE_INTERRUPT | EUSCI_B_SPI_TRANSMIT_INTERRUPT);
-
-    // Enable receive interrupt
-    EUSCI_B_SPI_enableInterrupt(EUSCI_B1_BASE,
-                                EUSCI_B_SPI_RECEIVE_INTERRUPT | EUSCI_B_SPI_TRANSMIT_INTERRUPT);
+//    EUSCI_B_SPI_clearInterrupt(EUSCI_B1_BASE,
+//                               EUSCI_B_SPI_RECEIVE_INTERRUPT | EUSCI_B_SPI_TRANSMIT_INTERRUPT);
+//
+//    // Enable receive interrupt
+//    EUSCI_B_SPI_enableInterrupt(EUSCI_B1_BASE,
+//                                EUSCI_B_SPI_RECEIVE_INTERRUPT | EUSCI_B_SPI_TRANSMIT_INTERRUPT);
 
     // Clear receive interrupt flag for communication with OBC
     EUSCI_A_SPI_clearInterrupt(EUSCI_A1_BASE,
@@ -211,19 +211,19 @@ static void enableAllInterrupts() {
  *
  * THIS CALL WILL BE LOCKED WITH THE INTERRUPTS FOR THE TO SLAVE CHANNEL
  */
-static void setChipSelect(device_t* devicePtr) {
-    if (currentSlavePtr != NULL) {
-        // Clear cs
-        GPIO_setOutputHighOnPin(currentSlavePtr->csPort, currentSlavePtr->csPin);
-    }
-
-    currentSlavePtr = devicePtr;
-
-    if (currentSlavePtr != NULL) {
-        // Set new cs
-        GPIO_setOutputLowOnPin(currentSlavePtr->csPort, currentSlavePtr->csPin);
-    }
-}
+//static void setChipSelect(device_t* devicePtr) {
+//    if (currentSlavePtr != NULL) {
+//        // Clear cs
+//        GPIO_setOutputHighOnPin(currentSlavePtr->csPort, currentSlavePtr->csPin);
+//    }
+//
+//    currentSlavePtr = devicePtr;
+//
+//    if (currentSlavePtr != NULL) {
+//        // Set new cs
+//        GPIO_setOutputLowOnPin(currentSlavePtr->csPort, currentSlavePtr->csPin);
+//    }
+//}
 
 
 /**
@@ -231,45 +231,45 @@ static void setChipSelect(device_t* devicePtr) {
  *
  * This method is locked by the
  */
-static void sendNullByteToSlave() {
-    EUSCI_B_SPI_transmitData(currentSlavePtr->spiBaseAddress, DEFAULT_SEND);
-    isSlaveTransmitInterruptPending = true;
-}
+//static void sendNullByteToSlave() {
+//    EUSCI_B_SPI_transmitData(currentSlavePtr->spiBaseAddress, DEFAULT_SEND);
+//    isSlaveTransmitInterruptPending = true;
+//}
 
-static void sendByteToSlave() {
-    if (slaveTransmitPtr == NULL) {
-        transmit_handler_func savedTransmitHandler = slaveTransmitHandler;
-        slaveTransmitHandler = NULL;
-
-        // If we are listening, but not sending, send 0 to keep the system listening.
-        if (isListeningToSlave) {
-            sendNullByteToSlave();
-        } else {
-            // TODO slow propogation of CS but fast propogation of other data
-            slaveCSShutoff = true;
-        }
-
-        // If there is a handler to call, call it
-        if (savedTransmitHandler != NULL) {
-            savedTransmitHandler(true); // True for successful transmission
-        }
-
-        return;
-    }
-
-    // Send the byte
-    EUSCI_B_SPI_transmitData(currentSlavePtr->spiBaseAddress, *slaveTransmitPtr);
-
-    isSlaveTransmitInterruptPending = true;
-
-    // Move pointer to the next byte to send
-    slaveTransmitPtr++;
-
-    // Have we finished sending the packet?
-    if (slaveTransmitPtr == slaveTransmitStopPtr) {
-        slaveTransmitPtr = NULL;
-    }
-}
+//static void sendByteToSlave() {
+//    if (slaveTransmitPtr == NULL) {
+//        transmit_handler_func savedTransmitHandler = slaveTransmitHandler;
+//        slaveTransmitHandler = NULL;
+//
+//        // If we are listening, but not sending, send 0 to keep the system listening.
+//        if (isListeningToSlave) {
+//            sendNullByteToSlave();
+//        } else {
+//            // TODO slow propogation of CS but fast propogation of other data
+//            slaveCSShutoff = true;
+//        }
+//
+//        // If there is a handler to call, call it
+//        if (savedTransmitHandler != NULL) {
+//            savedTransmitHandler(true); // True for successful transmission
+//        }
+//
+//        return;
+//    }
+//
+//    // Send the byte
+//    EUSCI_B_SPI_transmitData(currentSlavePtr->spiBaseAddress, *slaveTransmitPtr);
+//
+//    isSlaveTransmitInterruptPending = true;
+//
+//    // Move pointer to the next byte to send
+//    slaveTransmitPtr++;
+//
+//    // Have we finished sending the packet?
+//    if (slaveTransmitPtr == slaveTransmitStopPtr) {
+//        slaveTransmitPtr = NULL;
+//    }
+//}
 
 static void sendByteToMaster() {
     if (masterTransmitPtr == NULL) {
@@ -330,9 +330,10 @@ static void disableInterrupts(device_t *device) {
 
     if (device == &OBC) {
         EUSCI_A_SPI_disableInterrupt(OBC.spiBaseAddress, EUSCI_A_SPI_TRANSMIT_INTERRUPT | EUSCI_A_SPI_RECEIVE_INTERRUPT);
-    } else {
-        EUSCI_B_SPI_disableInterrupt(device->spiBaseAddress, EUSCI_B_SPI_TRANSMIT_INTERRUPT | EUSCI_B_SPI_RECEIVE_INTERRUPT);
     }
+//    } else {
+//        EUSCI_B_SPI_disableInterrupt(device->spiBaseAddress, EUSCI_B_SPI_TRANSMIT_INTERRUPT | EUSCI_B_SPI_RECEIVE_INTERRUPT);
+//    }
 }
 
 static void enableInterrupts(device_t *device) {
@@ -342,9 +343,10 @@ static void enableInterrupts(device_t *device) {
 
     if (device == &OBC) {
         EUSCI_A_SPI_enableInterrupt(OBC.spiBaseAddress, EUSCI_A_SPI_TRANSMIT_INTERRUPT | EUSCI_A_SPI_RECEIVE_INTERRUPT);
-    } else {
-        EUSCI_B_SPI_enableInterrupt(device->spiBaseAddress, EUSCI_B_SPI_TRANSMIT_INTERRUPT | EUSCI_B_SPI_RECEIVE_INTERRUPT);
     }
+//    } else {
+//        EUSCI_B_SPI_enableInterrupt(device->spiBaseAddress, EUSCI_B_SPI_TRANSMIT_INTERRUPT | EUSCI_B_SPI_RECEIVE_INTERRUPT);
+//    }
 }
 
 /*
@@ -372,7 +374,7 @@ void QT_SPI_initialise() {
 
     // Set base addresses
 
-    initialiseMaster();
+//    initialiseMaster();
 
     initialiseSlave();
 
@@ -404,21 +406,21 @@ bool QT_SPI_transmit(byte const *dataPtr, uint16_t length, device_t *devicePtr, 
     }
 
     // Check if we are connected to the correct slave, else change and clear
-    if (devicePtr->isSlave && currentSlavePtr != devicePtr) {
-        // Clear the receive buffer
-        slaveReceiveBufferPtr = slaveReceiveBuffer;
-
-        if (currentSlavePtr != NULL && (currentSlavePtr->cpha != devicePtr->cpha || currentSlavePtr->cpol != devicePtr->cpol))
-        {
-            EUSCI_B_SPI_changeClockPhasePolarity(EUSCI_B1_BASE, CPHA(devicePtr->cpha), CPOL(devicePtr->cpol));
-        }
-
-        // Select the device
-        setChipSelect(devicePtr);
-
-        // Clear the listening flag
-        isListeningToSlave = false;
-    }
+//    if (devicePtr->isSlave && currentSlavePtr != devicePtr) {
+//        // Clear the receive buffer
+//        slaveReceiveBufferPtr = slaveReceiveBuffer;
+//
+//        if (currentSlavePtr != NULL && (currentSlavePtr->cpha != devicePtr->cpha || currentSlavePtr->cpol != devicePtr->cpol))
+//        {
+//            EUSCI_B_SPI_changeClockPhasePolarity(EUSCI_B1_BASE, CPHA(devicePtr->cpha), CPOL(devicePtr->cpol));
+//        }
+//
+//        // Select the device
+//        setChipSelect(devicePtr);
+//
+//        // Clear the listening flag
+//        isListeningToSlave = false;
+//    }
 
     // Set the transmit buffer
     if (devicePtr->isSlave) {
@@ -436,7 +438,7 @@ bool QT_SPI_transmit(byte const *dataPtr, uint16_t length, device_t *devicePtr, 
         sendByteToMaster();
     } else if (!isSlaveTransmitInterruptPending) {
         // Start interrupts for the slave, but only if it is not already waiting to send, to avoid overwriting data
-        sendByteToSlave();
+//        sendByteToSlave();
     }
 
     enableInterrupts(devicePtr);
@@ -475,50 +477,50 @@ void QT_SPI_setReceiveHandler(receive_handler_func handler, byte length, device_
  *
  * THIS METHOD WILL INTERLIEVE WITH ANY INTERRUPTS
  */
-void QT_SPI_listenToSlave(device_t *devicePtr) {
-
-    disableInterrupts(devicePtr);
-
-    // Clear data in receive buffer
-    slaveReceiveBufferPtr = slaveReceiveBuffer;
-
-    transmit_handler_func savedHandlerFunc = slaveTransmitHandler;
-    slaveTransmitHandler = NULL;
-
-    if (slaveTransmitPtr != NULL) {
-        slaveTransmitPtr = NULL;
-    }
-
-    if (currentSlavePtr != NULL && (currentSlavePtr->cpha != devicePtr->cpha || currentSlavePtr->cpol != devicePtr->cpol))
-    {
-        EUSCI_B_SPI_changeClockPhasePolarity(EUSCI_B1_BASE, CPHA(devicePtr->cpha), CPOL(devicePtr->cpol));
-    }
-
-    // Set the chip select
-    setChipSelect(devicePtr);
-
-    isListeningToSlave = true;
-
-    if (!isSlaveTransmitInterruptPending) {
-        sendNullByteToSlave();
-    }
-
-    // If we currently are transmiting to the slave we need to halt the transmission and call the handler with a failed transmission result.
-    if (savedHandlerFunc != NULL) {
-        (*savedHandlerFunc)(false);
-    }
-
-    enableInterrupts(devicePtr);
-}
+//void QT_SPI_listenToSlave(device_t *devicePtr) {
+//
+//    disableInterrupts(devicePtr);
+//
+//    // Clear data in receive buffer
+//    slaveReceiveBufferPtr = slaveReceiveBuffer;
+//
+//    transmit_handler_func savedHandlerFunc = slaveTransmitHandler;
+//    slaveTransmitHandler = NULL;
+//
+//    if (slaveTransmitPtr != NULL) {
+//        slaveTransmitPtr = NULL;
+//    }
+//
+//    if (currentSlavePtr != NULL && (currentSlavePtr->cpha != devicePtr->cpha || currentSlavePtr->cpol != devicePtr->cpol))
+//    {
+//        EUSCI_B_SPI_changeClockPhasePolarity(EUSCI_B1_BASE, CPHA(devicePtr->cpha), CPOL(devicePtr->cpol));
+//    }
+//
+//    // Set the chip select
+//    setChipSelect(devicePtr);
+//
+//    isListeningToSlave = true;
+//
+//    if (!isSlaveTransmitInterruptPending) {
+//        sendNullByteToSlave();
+//    }
+//
+//    // If we currently are transmiting to the slave we need to halt the transmission and call the handler with a failed transmission result.
+//    if (savedHandlerFunc != NULL) {
+//        (*savedHandlerFunc)(false);
+//    }
+//
+//    enableInterrupts(devicePtr);
+//}
 
 /**
  * Stops listening to the current slave.
  *
  * THIS METHOD WILL INTERLIEVE WITH ANY INTERRUPTS
  */
-void QT_SPI_stopListeningToSlave() {
-    isListeningToSlave = false;
-}
+//void QT_SPI_stopListeningToSlave() {
+//    isListeningToSlave = false;
+//}
 
 /**
  * This function is called to propogate isListening, this is to guard against this state changing while
@@ -590,43 +592,43 @@ bool QT_SPI_isDataSent(device_t *devicePtr) {
 /**
  * Interrupt for processing received and transmitted data from the B1 channel (from slave devices)
  */
-#pragma vector=USCI_B1_VECTOR
-__interrupt void USCI_B1_ISR(void)
-{
-    switch(UCB1IV)
-    {
-    // Receive data case
-    case USCI_SPI_UCRXIFG:
-        // Check if we're pointing to a slave
-        if (currentSlavePtr == NULL) {
-            break;
-        }
-
-        receiveByte(currentSlavePtr, &EUSCI_B_SPI_receiveData, &slaveReceiveBufferPtr, slaveReceiveBuffer);
-
-        if(slaveCSShutoff) {
-            setChipSelect(NULL);
-            slaveCSShutoff = false;
-        }
-
-        break;
-
-        // Transmit data case
-    case USCI_SPI_UCTXIFG:
-        isSlaveTransmitInterruptPending = false;
-
-        if (currentSlavePtr == NULL) {
-            break;
-        }
-
-        sendByteToSlave();
-
-        break;
-
-    default:
-        break;
-    }
-}
+//#pragma vector=USCI_B1_VECTOR
+//__interrupt void USCI_B1_ISR(void)
+//{
+//    switch(UCB1IV)
+//    {
+//    // Receive data case
+//    case USCI_SPI_UCRXIFG:
+//        // Check if we're pointing to a slave
+//        if (currentSlavePtr == NULL) {
+//            break;
+//        }
+//
+//        receiveByte(currentSlavePtr, &EUSCI_B_SPI_receiveData, &slaveReceiveBufferPtr, slaveReceiveBuffer);
+//
+//        if(slaveCSShutoff) {
+//            setChipSelect(NULL);
+//            slaveCSShutoff = false;
+//        }
+//
+//        break;
+//
+//        // Transmit data case
+//    case USCI_SPI_UCTXIFG:
+//        isSlaveTransmitInterruptPending = false;
+//
+//        if (currentSlavePtr == NULL) {
+//            break;
+//        }
+//
+//        sendByteToSlave();
+//
+//        break;
+//
+//    default:
+//        break;
+//    }
+//}
 
 /**
  * Interrupt for processing transmitted and received data from OBC

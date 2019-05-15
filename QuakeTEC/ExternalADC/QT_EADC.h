@@ -2,7 +2,7 @@
 #define EXTERNALADC_QT_ADC_EXTERNAL_H_
 
 #include <stdbool.h>
-#include "SpiLib/QT_SPI_SpiLib.h"
+#include "QT_ADC128S052.h"
 
 #define EADC_RESOLUTION 4095.0
 #define EADC_VOLTAGE 3.3
@@ -20,9 +20,9 @@ typedef enum {
     ADC7,
 } AdcPin;
 
-bool QT_EADC_adcRead(AdcPin adcPin);
+//bool QT_EADC_adcRead(AdcPin adcPin);
 
-uint16_t QT_EADC_getAdcValue();
+uint16_t QT_EADC_getAdcValue(AdcPin adcPin);
 
 float QT_EADC_getAdcVoltage();
 

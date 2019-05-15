@@ -4,13 +4,14 @@
 /*
  * Includes
  */
+#include <Digipot/QT_DIGIPOT.h>
 #include <ExternalADC/QT_EADC.h>
 #include "Common/QT_COM_common.h"
 #include "DAC/QT_DAC.h"
-#include "Digipot/QT_digipot.h"
 #include "FRAM/QT_FRAM.h"
 #include "Timer/QT_timer.h"
 #include "QT_LPMain.h"
+#include "Digipot/QT_DIGIPOT.h"
 #include <stdlib.h>
 
 /*

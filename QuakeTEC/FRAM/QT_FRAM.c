@@ -1,5 +1,4 @@
 #include "QT_FRAM.h"
-#include "SpiLib/QT_SPI_SpiLib.h"
 
 #define FRAM_INDEX_START (FRAM_START + (uint16_t *) 8192)
 
