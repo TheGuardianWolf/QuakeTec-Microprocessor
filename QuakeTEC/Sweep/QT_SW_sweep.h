@@ -4,16 +4,19 @@
 /*
  * Includes
  */
-#include <Digipot/QT_DIGIPOT.h>
-#include <ExternalADC/QT_EADC.h>
+#include <stdlib.h>
+#include <stdbool.h>
 #include "Common/QT_COM_common.h"
+#include "OBCInterface/QT_OBC_Interface.h"
+#include "Digipot/QT_DIGIPOT.h"
+#include "ExternalADC/QT_EADC.h"
 #include "DAC/QT_DAC.h"
-#include "FRAM/QT_FRAM.h"
 #include "Timer/QT_timer.h"
 #include "QT_LPMain.h"
-#include "Digipot/QT_DIGIPOT.h"
-#include <stdlib.h>
+#include "PowerControl/QT_PWR_power.h"
 
+#define SWEEP_MAX_NUM_SAMPLES 50
+#define SWEEP_REPETITIONS 2
 /*
  * Type definitions
  */
@@ -34,7 +37,11 @@ typedef struct {
 //static void QT_SW_conductSweep(sweep_settings_t * settings);
 
 void QT_SW_getPlasmaData();
+
 sweep_settings_t QT_SW_createSweepSettings(int numSweeps, float maxSweepVoltage, float minSweepVoltage, int numberOfSamples, float sweepTime);
 
+byte* QT_SW_getSweepData();
+
+byte* QT_SW_getFloatingProbeVoltage();
 
 #endif /* QT_SW_SWEEP_H_ */

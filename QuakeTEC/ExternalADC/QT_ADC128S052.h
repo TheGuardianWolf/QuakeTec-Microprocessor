@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
+#include "Common/QT_COM_common.h"
 
 #define NUMBER_OF_CHANNELS      (8)
 

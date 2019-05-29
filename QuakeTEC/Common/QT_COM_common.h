@@ -8,8 +8,8 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <float.h>
-
 #include "driverlib.h"
+#include "PL_Protocol.h"
 
 /*
  * Defines
@@ -20,6 +20,8 @@
 #define NUM_VALUES_10_BITS 1024
 #define MAX_VALUE_16_BITS 65535
 
+volatile uint16_t ERROR_STATUS;
+volatile bool exitCommand;
 /*
  * Type definitions
  */
@@ -39,6 +41,9 @@ uint16_t QT_COM_max(uint16_t *values, uint16_t length);
  */
 uint16_t QT_COM_min(uint16_t *values, uint16_t length);
 
+uint16_t QT_COM_maxByteArray(byte *values, uint16_t length);
+
+uint16_t QT_COM_minByteArray(byte *values, uint16_t length);
 
 void binary_print(int value);
 

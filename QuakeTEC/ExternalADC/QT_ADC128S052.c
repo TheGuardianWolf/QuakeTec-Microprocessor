@@ -8,12 +8,12 @@ uint16_t u16_CurrentChannelMask = 0x0000;
 /* SPI configuration for the ADC128S052. */
 static SPIMaster_Config_t t_Config =
 {
-    .b_ClockPhase = true,
-    .b_ClockPolarity = true,
+    .b_ClockPhase = false,
+    .b_ClockPolarity = false,
     .b_MSBFirst = true,
     .u8_CSPort = GPIO_PORT_P2,
     .u8_CSPin = GPIO_PIN5,
-    .u16_ClockDivider = SPIMASTER_FREQUENCY_TO_DIVIDER(400000),
+    .u16_ClockDivider = SPIMASTER_FREQUENCY_TO_DIVIDER(100000),
     .u16_CSDelay_us = 10,
     .u16_TransmissionDelay_us = 0,
 };

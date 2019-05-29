@@ -9,7 +9,6 @@
 #define QT_LPMAIN_H_
 
 #include "driverlib.h"
-
 #include "InternalADC/QT_adc_internal.h"
 #include "ExternalADC/QT_EADC.h"
 #include "SpiLib/QT_SPI_SpiLib.h"
@@ -21,15 +20,6 @@
 #include "Digipot/QT_DIGIPOT.h"
 #include "SpiLib/QT_MSP430_SPIMaster.h"
 #include "Digipot/QT_AD5292.h"
-
-typedef struct //function_flags
-{
-    uint16_t probe_deploying;
-} f_flags;
-
-extern volatile f_flags F_FLAGS;
-
-/** Set to true if a command should exit as soon as possible. Commands must not reset this flag, and should leave their systems in a 'safe' state. */
-extern volatile bool exitCommand;
+#include "OBCInterface/QT_OBC_Interface.h"
 
 #endif /* QT_LPMAIN_H_ */

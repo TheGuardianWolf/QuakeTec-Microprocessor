@@ -20,7 +20,7 @@ static SPIMaster_Config_t t_Config =
     .b_MSBFirst = true,
     .u8_CSPort = GPIO_PORT_P2,
     .u8_CSPin = GPIO_PIN4,
-    .u16_ClockDivider = SPIMASTER_FREQUENCY_TO_DIVIDER(4000000),
+    .u16_ClockDivider = SPIMASTER_FREQUENCY_TO_DIVIDER(400000),
     .u16_CSDelay_us = 10,
     .u16_TransmissionDelay_us = 0,
 };

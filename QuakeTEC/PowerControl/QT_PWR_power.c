@@ -9,14 +9,18 @@
 #define POWER_GUARD_PORT 3
 #define POWER_GUARD_PIN GPIO_PIN3
 
+static bool powerStatus = false;
+
 void QT_PWR_turnOn16V( ) {
     GPIO_setAsOutputPin(POWER_16V_PORT, POWER_16V_PIN);
     GPIO_setOutputHighOnPin(POWER_16V_PORT, POWER_16V_PIN);
+    powerStatus = true;
 }
 
 void QT_PWR_turnOff16V() {
     GPIO_setAsOutputPin(POWER_16V_PORT, POWER_16V_PIN);
     GPIO_setOutputLowOnPin(POWER_16V_PORT, POWER_16V_PIN);
+    powerStatus = false;
 }
 
 void QT_PWR_turnOnGuard() {

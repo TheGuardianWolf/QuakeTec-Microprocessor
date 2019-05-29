@@ -5,6 +5,10 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#define ERROR_NONE                          (0)
+#define ERROR_SPI_BUS                       (1)
+#define ERROR_INVALID_INPUT_VALUE           (2)
+
 void AD5292_Init();
 
 /*

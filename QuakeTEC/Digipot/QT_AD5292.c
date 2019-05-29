@@ -15,10 +15,6 @@
 #define INSTRUCTION_SWITCH_ON				(0x2000)
 #define INSTRUCTION_SWITCH_OFF				(0x2001)
 
-#define ERROR_NONE							(0)
-#define ERROR_SPI_BUS						(1)
-#define ERROR_INVALID_INPUT_VALUE			(2)
-
 /* SPI configuration for the AD5292. */
 static SPIMaster_Config_t t_Config =
 {

@@ -23,6 +23,39 @@ uint16_t QT_COM_max(uint16_t *values, uint16_t length) {
     return currentMax;
 }
 
+uint16_t QT_COM_maxByteArray(byte *values, uint16_t length) {
+    int i;
+    uint16_t currentMax = (((uint16_t) values[0])<<8) + values[1];
+    uint16_t temp = 0;
+
+    for (i = 2; i < length -1; i++) {
+        temp = (((uint16_t) values[i])<<8) + values[i+1];
+        if (temp > currentMax) {
+            currentMax = temp;
+        }
+        i++;
+    }
+
+    return currentMax;
+}
+
+uint16_t QT_COM_minByteArray(byte *values, uint16_t length) {
+    int i;
+    uint16_t currentMin = (((uint16_t) values[0])<<8) + values[1];
+    uint16_t temp = 0;
+
+    for (i = 2; i < length - 1; i++) {
+        temp = (((uint16_t) values[i])<<8) + values[i+1];
+        if (temp > currentMin) {
+            currentMin = temp;
+        }
+        i++;
+    }
+
+    return currentMin;
+}
+
+
 /**
  * Finds the minimum value in an array.
  */

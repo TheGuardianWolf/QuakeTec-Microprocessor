@@ -16,9 +16,11 @@
 #define TEMP_FINAL_SCALE 4096.0
 #define TEMP_RESISTOR_SCALE 6.25
 #define TEMP_RESISTOR_OFFSET 1000
+#define MAX_CYCLES 1000000
 
 #include <InternalADC/QT_adc_internal.h>
-#include "driverlib.h"
+
+extern volatile bool exitCommand;
 
 static volatile int16_t result = 0;
 static volatile bool readCompleted = true;
@@ -71,9 +73,12 @@ void QT_IADC_initialise() {
 /**
  * This function reads the temperature of the PCB in C, this function will block for a small amount of time while the tempurature is read (16 cycles)
  */
-float QT_IADC_readTemperature() {
+uint16_t QT_IADC_readTemperature() {
     // Ensure that there is not a read running
-    while(!readCompleted) {  }
+    int i = 0;
+    while(!readCompleted && (i<MAX_CYCLES) && !exitCommand) {
+        i++;
+    }
 
     ADC_disableConversions(ADC_BASE, ADC_COMPLETECONVERSION);
     ADC_configureMemory(ADC_BASE,
@@ -84,7 +89,10 @@ float QT_IADC_readTemperature() {
     readCompleted = false;
     ADC_startConversion(ADC_BASE, ADC_SINGLECHANNEL);
 
-    while(!readCompleted) {  }
+    i = 0;
+    while(!readCompleted && i<MAX_CYCLES && !exitCommand) {
+        i++;
+    }
 
     // Equation from LP control docs. k is the constant offset in the equation
     // while m is the complicated multicand.
@@ -95,16 +103,22 @@ float QT_IADC_readTemperature() {
 
     float RT = TEMP_R1 * x / (1 - x);
 
-    return (RT - TEMP_RESISTOR_OFFSET) / TEMP_RESISTOR_SCALE;
+    float temperature = 10 * (RT - TEMP_RESISTOR_OFFSET) / TEMP_RESISTOR_SCALE;
+
+    uint16_t data = temperature;
+
+    return data;
 }
 
 /**
  * This function reads the battery current, this function will block for a small amount of time while the current is read (16 cycles)
  */
-float QT_IADC_readCurrent() {
+uint16_t QT_IADC_readCurrent() {
     // Ensure that there is not a read running
-    while(!readCompleted) {  }
-
+    int i = 0;
+    while(!readCompleted && i<MAX_CYCLES && !exitCommand) {
+        i++;
+    }
     ADC_disableConversions(ADC_BASE, ADC_COMPLETECONVERSION);
     ADC_configureMemory(ADC_BASE,
                         ADC_INPUT_A8,
@@ -114,9 +128,14 @@ float QT_IADC_readCurrent() {
     readCompleted = false;
     ADC_startConversion(ADC_BASE, ADC_SINGLECHANNEL);
 
-    while(!readCompleted) {  }
+    i = 0;
+    while(!readCompleted && i<MAX_CYCLES && !exitCommand) {
+        i++;
+    }
 
-    return (result + CURRENT_OFFSET) * CURRENT_SCALE;
+    uint16_t data = (result + CURRENT_OFFSET) * CURRENT_SCALE;
+
+    return data;
 }
 
 //ADC10 interrupt service routine

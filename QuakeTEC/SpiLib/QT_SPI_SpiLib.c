@@ -390,6 +390,8 @@ void QT_SPI_initialise() {
  */
 bool QT_SPI_transmit(byte const *dataPtr, uint16_t length, device_t *devicePtr, transmit_handler_func handler) {
 
+
+
     disableInterrupts(devicePtr);
 
     // Check if we are currently sending, if we are return false
