@@ -13,6 +13,7 @@
 
 typedef enum
 {
+    PL_COMMAND_IGNORE,
     PL_COMMAND_STOP,
     PL_COMMAND_POWER_OFF,
     PL_COMMAND_POWER_ON,

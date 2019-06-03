@@ -14,9 +14,12 @@ volatile f_flags F_FLAGS = {0};
 
 // Sweep values
 uint16_t dacValue;
+uint8_t eventQueueLength=0;
 
 uint8_t digipotControl;
 uint8_t digipotData;
+//byte asf[2]={0x00, 0x22};
+byte empty[] = {0x00, 0x00};
 
 void finishTransmission(bool unused) {
     QT_SPI_listenToMaster();
@@ -29,22 +32,19 @@ void flagEventsFinishedSending(bool unused) {
 }
 
 void sendQueryData(byte* data, uint8_t length) {
-    byte headerData[2] = {PL_START_BYTE, length};
-    int i;
-    byte temp;
-    for (i=0; i<length; i++) {
-        temp=data[i];
-    }
+    byte headerData[2] = {length, PL_START_BYTE};
 
     finishedSendingEvents = false;
 
     QT_SPI_stopListeningToMaster(); // Stop reading until the data is sent
 
-    QT_SPI_transmit(
-            headerData,
-            2,
-            &OBC,
-            flagEventsFinishedSending);
+//    QT_SPI_transmit(
+//            headerData,
+//            2,
+//            &OBC,
+//            flagEventsFinishedSending);
+
+    QT_SPI_stopListeningToMaster();
 
     QT_SPI_transmit(
             data,
@@ -64,22 +64,22 @@ void queueEvent(PL_Event_t event) {
 }
 
 void sendEvents() {
-    eventQueue[eventQueueStart - 2] = EVENT_QUEUE_LENGTH - eventQueueStart;
+    eventQueue[eventQueueStart - 2] = 2;
     eventQueue[eventQueueStart - 1] = PL_START_BYTE;
-
     finishedSendingEvents = false;
-    byte a = eventQueue[eventQueueStart - EVENT_QUEUE_HEADER_LENGTH];
-    byte b = eventQueue[eventQueueStart - EVENT_QUEUE_HEADER_LENGTH+1];
-    byte c = eventQueue[eventQueueStart - EVENT_QUEUE_HEADER_LENGTH+2];
-    byte d = eventQueue[eventQueueStart - EVENT_QUEUE_HEADER_LENGTH+3];
 
     QT_SPI_stopListeningToMaster(); // Stop reading until the data is sent
 
     QT_SPI_transmit(
             &eventQueue[eventQueueStart - EVENT_QUEUE_HEADER_LENGTH],
-            EVENT_QUEUE_LENGTH - eventQueueStart + EVENT_QUEUE_HEADER_LENGTH,
+            4,
             &OBC,
             flagEventsFinishedSending);
+
+
+//    QT_SPI_transmit(
+//            &asf, 2, &OBC, flagEventsFinishedSending
+//            );
 
     eventQueueStart = EVENT_QUEUE_LENGTH;
 }
@@ -98,7 +98,7 @@ void handleQuery(PL_Query_t query, byte argument) {
         break;
     }
     case PL_QUERY_DEPLOYMENT_STATE:
-        sendQueryData(QT_BW_getDeploymentStatus(), 3);
+        sendQueryData(QT_BW_getDeploymentStatus(), 4);
         break;
     case PL_QUERY_PROBE_TEMPERATURE:
     {
@@ -152,7 +152,9 @@ void obcIncomingHandler(const byte *data) {
     byte code = data[0];
     byte argument = data[1];
 
-    if(code < PL_COMMAND_ENUM_COUNT) {
+    if (code == 0) {
+        return;
+    } else if ((code < PL_COMMAND_ENUM_COUNT)) {
         handleCommand((PL_Command_t) code, argument);//, data + 1);
     } else {
         handleQuery((PL_Query_t) code, argument);

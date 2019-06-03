@@ -72,7 +72,6 @@ void initialise() {
 
     QT_DAC_reset();
 
-
     // Enable interrupts
 
     aclk_speed = CS_getACLK();
@@ -100,17 +99,6 @@ static volatile int pin_flag=1;
 void main(void) {
     initialise();
     startListening();
-    //TODO remove guard switch turn on until sweeping
-
-    byte a[20];
-    int i, j;
-
-    for (i=0; i < 20; i++) {
-        a[i]= (i>>8);
-        i++;
-        a[i] = i & 0x00FF;
-        j = (a[i-1]<<8) + a[i];
-    }
 
 //    uint16_t d = QT_COM_maxByteArray(a, 20);
 //    P2REN |= BIT0;
@@ -119,53 +107,38 @@ void main(void) {
 //    P2IES |= BIT0;
 //    P2IFG &= ~BIT0;
 
-
-    uint8_t status;
-
-    float gain = 10;
 //    P3DIR = BIT2;
 //    P3OUT = BIT2;
 //    P1DIR |= BIT2;
 //    P1OUT |= BIT2;
-    QT_PWR_turnOnGuard();
-    uint16_t data = 0x03ff;
-    uint16_t asdf;
+    byte data[2] = {0xAA, 0xAA};
 
-    while (true) {
-//        QT_SW_getPlasmaData();
-        asdf = QT_EADC_getAdcValue(ADC2);
-    }
-
-//    while(true) {
-//        QT_DIGIPOT_setGain(gain);
-//        AD5292_Set(data);
-
-
-//        QT_BW_deploy();
-//        QT_DAC_setVoltage(7);
-
-
-//        data = QT_EADC_getAdcValue();
-//        __delay_cycles(100000);
-//        QT_SW_getPlasmaData();
+//    while (true) {
+////        QT_SW_getPlasmaData();
+////        asdf = QT_EADC_getAdcValue(ADC1);
+//        QT_SPI_transmit(
+//                data,
+//                2,
+//                &OBC,
+//                NULL);
+//        QT_SPI_listenToMaster();
 //    }
 
-//    QT_DAC_reset();
 
-    byte aa[2] = {PL_COMMAND_SWEEP, 2};
-    obcIncomingHandler(aa);
+//    QT_DAC_reset();
 
     while(true) {
 
 //        QT_EADC_measureSweepCurrent(&adcHandler);
 //         Wait until a command has been queued
-        byte aa[2] = {PL_COMMAND_SWEEP, 2};
-        obcIncomingHandler(aa);
         while(!commandRunning);
 //         These command functions are blocking.
         PL_Command_t command = currentCommand;
         switch(currentCommand) {
         case PL_COMMAND_STOP:
+        {
+            int a =1;
+        }
             break;
         case PL_COMMAND_POWER_OFF:
             QT_PWR_turnOff16V();
@@ -200,60 +173,10 @@ void main(void) {
         default:
             break;
         }
-//        currentCommand = ;
+
         commandRunning = false;
     }
 }
 
-#pragma vector = PORT2_VECTOR
-__interrupt void Port_2(void) {
-
-//    P1OUT ^= BIT1;
-    if (pin_flag ==1) {
-        pin_flag=0;
-
-//        byte a[2] = {PL_COMMAND_DEPLOY, 2};
-//        byte a[2] = {PL_COMMAND_POWER_OFF, 2};
-//        byte a[2] = {PL_COMMAND_POWER_ON, 2};
-        byte a[2] = {PL_COMMAND_SWEEP, 2};
-        obcIncomingHandler(a);
-//        volatile struct timer* timer_item= QT_TIMER_startPeriodicTask(DEPLOY_PROBE_SP, 5000, 100);
-//        currentCommand = PL_COMMAND_DEPLOY;
-//        handleCommand(PL_COMMAND_DEPLOY);
-//        while (timer_item->command != TIMER_STOP) {
-
-//        }
-//        QT_TIMER_sleep(timer_item, 5000);
-//        while (timer_item->command != TIMER_STOP) {
-//
-//        }
-//        timer_item= QT_TIMER_startPeriodicTask(DEPLOY_PROBE_SP, 3000, 100);
-//        sweep_settings_t settings;
-//
-//        settings = QT_SW_createSweepSettings(1, 1, 4.5, 50);
-//        QT_SW_conductSweep(&settings);
-
-
-        pin_flag=2;
-    } else if (pin_flag == 2) {
-        pin_flag=0;
-//        byte a[2] = {PL_COMMAND_STOP, 2};
-        byte a[2] = {PL_QUERY_EVENT, 2};
-//        byte a[2] = {PL_QUERY_ERROR_STATUS, 2};
-//        byte a[2] = {PL_QUERY_ERROR_STATUS, 2};
-
-        obcIncomingHandler(a);
-
-//        currentCommand = PL_COMMAND_ENUM_COUNT;
-//        handleCommand(PL_COMMAND_ENUM_COUNT);
-//        startPWM(DEPLOY_PROBE_FP, 8000, 10, 80);
-        pin_flag=1;
-    }
-//
-////    timer_setup(10, 10000);
-
-    P2IFG &= ~BIT0;
-
-}
 
 

@@ -290,8 +290,10 @@ static void sendByteToMaster() {
     // Move pointer to the next byte to send
     masterTransmitPtr++;
 
+
+
     // Have we finished sending the packet?
-    if (masterTransmitPtr == masterTransmitStopPtr) {
+    if (masterTransmitPtr >= masterTransmitStopPtr) {
         masterTransmitPtr = NULL;
     }
 }
@@ -425,15 +427,20 @@ bool QT_SPI_transmit(byte const *dataPtr, uint16_t length, device_t *devicePtr, 
 //    }
 
     // Set the transmit buffer
-    if (devicePtr->isSlave) {
-        slaveTransmitPtr = dataPtr;
-        slaveTransmitStopPtr = dataPtr + length;
-        slaveTransmitHandler = handler;
-    } else {
-        masterTransmitPtr = dataPtr;
-        masterTransmitStopPtr = dataPtr + length;
-        masterTransmitHandler = handler;
-    }
+//    if (devicePtr->isSlave) {
+//        slaveTransmitPtr = dataPtr;
+//        slaveTransmitStopPtr = dataPtr + length;
+//        slaveTransmitHandler = handler;
+//    } else {
+//        masterTransmitPtr = dataPtr;
+//        masterTransmitStopPtr = dataPtr + length;
+//        masterTransmitHandler = handler;
+//    }
+
+
+    masterTransmitPtr = dataPtr;
+    masterTransmitStopPtr = dataPtr + length;
+    masterTransmitHandler = handler;
 
     if (!devicePtr->isSlave) {
         // Get the data ready for the next clock to send.
@@ -538,9 +545,7 @@ static void setMasterListenState(bool isListening) {
     if(isListeningToMaster) {
         // Reset the buffer
         masterReceiveBufferPtr = masterReceiveBuffer;
-        GPIO_setOutputHighOnPin(GPIO_PORT_P1, GPIO_PIN0);
     } else {
-        GPIO_setOutputLowOnPin(GPIO_PORT_P1, GPIO_PIN0);
     }
 }
 
@@ -575,16 +580,16 @@ bool QT_SPI_isDataSent(device_t *devicePtr) {
 //            return false;
 //        }
 //    } else {
-//        if (masterTransmitPtr != NULL) {
-//            enableInterrupts(devicePtr);
-//            return false;
-//        }
+        if (masterTransmitPtr != NULL) {
+            enableInterrupts(devicePtr);
+            return false;
+        }
 //    }
 //    return true;
 //    char a = masterTransmitPtr;
 //    char b = slaveTransmitPtr;
 
-    return (masterTransmitPtr == NULL) && (slaveTransmitPtr == NULL);
+    return (masterTransmitPtr == NULL);
 }
 
 /*

@@ -15,7 +15,7 @@ const float SWEEP_MIN_VOLTAGE = -15.0;
 const float SWEEP_MAX_VOLTAGE = 15.0;
 const float SWEEP_MIN_REPEATS = 10;
 const float SWEEP_MAX_REPEATS = 10;
-const float SWEEP_ADC_MID_VOL = 1.67;//(1.25 * EADC_RESOLUTION / EADC_VOLTAGE);
+const float SWEEP_ADC_MID_VOL = (1.67 * EADC_RESOLUTION / EADC_VOLTAGE);
 
 static volatile float maxSweepValue;
 static volatile float minSweepValue;
@@ -57,7 +57,7 @@ static int QT_SW_sweep(float startSweepVoltage, float endSweepVoltage, int sampl
 
             if (useAdc) {
                 //Read sweeping probe
-                spValue = QT_EADC_getAdcValue(ADC1);
+                spValue = QT_EADC_getAdcValue(ADC0);
                 sweepData[dataPointer] = spValue >> 8;
                 dataPointer++;
                 sweepData[dataPointer] = spValue & 0x00FF;
@@ -79,19 +79,6 @@ static void QT_SW_conductSweep(sweep_settings_t * settings) {
     float period = (settings->sweepTime)/(settings->numberOfSamples);
     sweepDataLength = settings->numberOfSamples;
     int vol, i;
-
-//    //for gain testing
-//    float dif = 0.001 * digipotGain * 15;
-//    float minvol = -dif;
-//    float maxvol = dif;
-//
-//    i = QT_SW_sweep(0, minvol, (int) settings->numberOfSamples / 2, period, false);
-//
-//    i = QT_SW_sweep(minvol, maxvol, settings->numberOfSamples, period, true);
-//
-//    i = QT_SW_sweep(maxvol, 0, (int) settings->numberOfSamples / 2, period, false);
-
-    //end gain testing
 
     for (i = 0; i < SWEEP_REPETITIONS; i++) {
         vol = QT_SW_sweep(0, settings->minSweepVoltage, (int) settings->numberOfSamples / 2, period, false);

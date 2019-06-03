@@ -46,7 +46,7 @@ uint16_t QT_COM_minByteArray(byte *values, uint16_t length) {
 
     for (i = 2; i < length - 1; i++) {
         temp = (((uint16_t) values[i])<<8) + values[i+1];
-        if (temp > currentMin) {
+        if (temp < currentMin) {
             currentMin = temp;
         }
         i++;

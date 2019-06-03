@@ -16,7 +16,7 @@
 #define TEMP_FINAL_SCALE 4096.0
 #define TEMP_RESISTOR_SCALE 6.25
 #define TEMP_RESISTOR_OFFSET 1000
-#define MAX_CYCLES 1000000
+#define MAX_CYCLES 1000
 
 #include <InternalADC/QT_adc_internal.h>
 
