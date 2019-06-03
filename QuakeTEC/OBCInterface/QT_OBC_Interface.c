@@ -38,11 +38,13 @@ void sendQueryData(byte* data, uint8_t length) {
 
     QT_SPI_stopListeningToMaster(); // Stop reading until the data is sent
 
-//    QT_SPI_transmit(
-//            headerData,
-//            2,
-//            &OBC,
-//            flagEventsFinishedSending);
+    QT_SPI_transmit(
+            headerData,
+            2,
+            &OBC,
+            flagEventsFinishedSending);
+
+    while (!finishedSendingEvents && !exitCommand) {;}
 
     QT_SPI_stopListeningToMaster();
 
