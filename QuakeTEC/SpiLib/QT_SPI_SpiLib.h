@@ -1,82 +1,30 @@
 #ifndef SPILIB_H
 #define SPILIB_H
 
+#define OBCSPI_FILL_BYTE (0xFF)
+#define OBCSPI_NULL_BYTE (0x00)
+
 /*
  * Includes
  */
 #include "Common/QT_COM_common.h"
 
-#define CPOL(x) (x ? UCCKPL : 0x00)
-#define CPHA(x) (x ? 0x00 : UCCKPH)
+typedef void (*QT_OBCSPI_ISRRxHandler_t)(uint8_t* const, const uint16_t);
 
-/*
- * Type definitions
- */
-typedef void(*receive_handler_func)(const byte * data);
-typedef void(*transmit_handler_func)(bool succeeded);
+typedef void (*QT_OBCSPI_ISRTxHandler_t)(uint8_t* const, const uint16_t, const uint16_t);
 
-typedef struct {
-    bool isSlave;
-    uint16_t spiBaseAddress;
-    receive_handler_func receiveHandler;
-    byte expectedLength;
+void QT_OBCSPI_init();
 
-    // CS storage
-    uint8_t csPort, csPin;
-    bool cpol, cpha;
-} device_t;
+void QT_OBCSPI_disableInterrupts();
 
-/**
- * Variable declarations
- */
-extern device_t OBC;
-extern device_t ADC;
-extern device_t DAC;
-extern device_t DIGIPOT;
+void QT_OBCSPI_enableInterrupts();
 
-/*
- * Public functions
- */
+void QT_OBCSPI_clearRx();
 
-/**
- * Sets up the SPI library
- */
-void QT_SPI_initialise();
+void QT_OBCSPI_clearTx();
 
-/**
- * Returns immediately. Returns true if the system was ready to send data. If it returns false the data was not sent.
- * The callback will be called by the interrupt handler when the transmission has finished. If the callback is NULL nothing occurs
- */
-bool QT_SPI_transmit(const byte *dataPtr, uint16_t length, device_t *device, transmit_handler_func callback);
+void QT_OBCSPI_writeTx(uint8_t* data, uint16_t dataLength);
 
-/**
- * Registers a function that handles incoming data. This will be called when length bytes have been recevied.
- */
-void QT_SPI_setReceiveHandler(receive_handler_func handler, byte length, device_t *device);
-
-/**
- * Starts clocking data in from the slave and sets the CS line. This will cause the handler to be called.
- */
-void QT_SPI_listenToSlave(device_t *device);
-
-/**
- * Stops listening to the current slave.
- */
-void QT_SPI_stopListeningToSlave();
-
-/**
- * Stops listening to master
- */
-void QT_SPI_stopListeningToMaster();
-
-/**
- * Starts listening to master.
- */
-void QT_SPI_listenToMaster();
-
-/**
- * Returns true if all data has been sent.
- */
-bool QT_SPI_isDataSent(device_t *devicePtr);
+void QT_OBCSPI_registerISRHandlers(QT_OBCSPI_ISRRxHandler_t handler1, QT_OBCSPI_ISRTxHandler_t handler2);
 
 #endif

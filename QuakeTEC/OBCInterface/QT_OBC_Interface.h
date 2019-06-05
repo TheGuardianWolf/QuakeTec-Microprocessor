@@ -11,20 +11,11 @@
 #include "Sweep/QT_SW_sweep.h"
 #include "InternalADC/QT_adc_internal.h"
 
-typedef struct //function_flags
-{
-    uint16_t probe_deploying;
-} f_flags;
 
-extern volatile f_flags F_FLAGS;
+void QT_OBC_Interface_init();
 
-
-/** Set to true if a command should exit as soon as possible. Commands must not reset this flag, and should leave their systems in a 'safe' state. */
-volatile PL_Command_t currentCommand;
-volatile bool commandRunning;
-
-void startListening();
-void obcIncomingHandler(const byte *data);
 void queueEvent(PL_Event_t event);
+
+void QT_OBC_Interface_commandLoop();
 
 #endif

@@ -12,7 +12,6 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include "driverlib.h"
-#include "QT_LPMain.h"
 
 //typedef void (*task_func)();
 

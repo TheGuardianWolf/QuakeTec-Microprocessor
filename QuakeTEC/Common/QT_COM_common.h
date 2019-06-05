@@ -20,8 +20,10 @@
 #define NUM_VALUES_10_BITS 1024
 #define MAX_VALUE_16_BITS 65535
 
-volatile uint16_t ERROR_STATUS;
-volatile bool exitCommand;
+
+extern volatile uint16_t ERROR_STATUS;
+extern volatile bool exitCommand;
+
 /*
  * Type definitions
  */

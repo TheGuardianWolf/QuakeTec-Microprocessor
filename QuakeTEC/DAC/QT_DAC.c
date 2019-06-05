@@ -10,12 +10,12 @@ const float SWEEP_SCALE = (1.0/(30.0/DAC_VOLTAGE));
 static volatile bool doneTransmitting;
 byte DACValue[2] = {0};
 
-static uint16_t QT_DAC_convertFromDacVoltage(float voltage) {
-    voltage = voltage > DAC_VOLTAGE ? DAC_VOLTAGE : voltage;
-    voltage = voltage < 0 ? 0 : voltage;
-    uint16_t convertedValue = (DAC_RESOLUTION * voltage) / DAC_VOLTAGE;
-    return convertedValue;
-}
+//static uint16_t QT_DAC_convertFromDacVoltage(float voltage) {
+//    voltage = voltage > DAC_VOLTAGE ? DAC_VOLTAGE : voltage;
+//    voltage = voltage < 0 ? 0 : voltage;
+//    uint16_t convertedValue = (DAC_RESOLUTION * voltage) / DAC_VOLTAGE;
+//    return convertedValue;
+//}
 
 static uint16_t QT_DAC_convertFromDacSweepVoltage(float voltage) {
     voltage = voltage > MAX_SWEEP_VOLTAGE ? MAX_SWEEP_VOLTAGE : voltage;

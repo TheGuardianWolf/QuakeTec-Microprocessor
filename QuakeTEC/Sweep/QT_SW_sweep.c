@@ -88,11 +88,11 @@ static void QT_SW_conductSweep(sweep_settings_t * settings) {
         vol = QT_SW_sweep(vol, 0, (int) settings->numberOfSamples / 2, period, false);
     }
 
-    float f;
+//    float f;
     int a =1;
     int j = 0;
     for (j = 0; j <  2 * SWEEP_MAX_NUM_SAMPLES * SWEEP_REPETITIONS; j++) {
-        f = sweepData[j];
+//        f = sweepData[j];
         a = j;
     }
     a++;

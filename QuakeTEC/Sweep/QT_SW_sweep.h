@@ -12,7 +12,6 @@
 #include "ExternalADC/QT_EADC.h"
 #include "DAC/QT_DAC.h"
 #include "Timer/QT_timer.h"
-#include "QT_LPMain.h"
 #include "PowerControl/QT_PWR_power.h"
 
 #define SWEEP_MAX_NUM_SAMPLES 50

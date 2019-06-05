@@ -10,6 +10,7 @@
 #define PL_START_BYTE_SIZE 1
 #define PL_QUERY_LENGTH_SIZE 1
 #define PL_QUERY_MAX_LENGTH 0xff
+#define PL_INTERRUPT_BYTE 0xA4
 
 typedef enum
 {

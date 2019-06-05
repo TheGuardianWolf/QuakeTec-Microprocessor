@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include "QT_ADC128S052.h"
 #include "Common/QT_COM_common.h"
+#include "OBCInterface/QT_OBC_Interface.h"
 #include "driverlib.h"
 
 #define EADC_RESOLUTION 4095.0

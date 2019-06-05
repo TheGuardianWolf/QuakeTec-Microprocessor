@@ -1,172 +1,192 @@
 #include "QT_OBC_Interface.h"
+#include "SpiLib/QT_SPI_SpiLib.h"
+#include <string.h>
 
-#define EVENT_QUEUE_LENGTH 256
-#define EVENT_QUEUE_HEADER_LENGTH 2
+#define EVENT_QUEUE_SIZE (255)
 
-extern volatile uint16_t ERROR_CODE;
-extern volatile bool exitCommand;
+static uint16_t waitingForCommand = 1;
+
+static volatile PL_Command_t currentCommand = PL_COMMAND_IGNORE;
+static volatile bool commandRunning = false;
 
 // Event buffer code. The buffer is on
-byte eventQueue[EVENT_QUEUE_LENGTH + EVENT_QUEUE_HEADER_LENGTH];
-int eventQueueStart = EVENT_QUEUE_LENGTH;
-volatile bool finishedSendingEvents = true;
-volatile f_flags F_FLAGS = {0};
+static PL_Event_t eventQueue[EVENT_QUEUE_SIZE];
+static uint16_t eventQueueLength = 0;
 
-// Sweep values
-uint16_t dacValue;
-uint8_t eventQueueLength=0;
-
-uint8_t digipotControl;
-uint8_t digipotData;
-//byte asf[2]={0x00, 0x22};
-byte empty[] = {0x00, 0x00};
-
-void finishTransmission(bool unused) {
-    QT_SPI_listenToMaster();
-}
-
-void flagEventsFinishedSending(bool unused) {
-    finishedSendingEvents = true;
-
-    finishTransmission(unused);
-}
-
-void sendQueryData(byte* data, uint8_t length) {
-    byte headerData[2] = {length, PL_START_BYTE};
-
-    finishedSendingEvents = false;
-
-    QT_SPI_stopListeningToMaster(); // Stop reading until the data is sent
-
-    QT_SPI_transmit(
-            headerData,
-            2,
-            &OBC,
-            flagEventsFinishedSending);
-
-    while (!finishedSendingEvents && !exitCommand) {;}
-
-    QT_SPI_stopListeningToMaster();
-
-    QT_SPI_transmit(
-            data,
-            length,
-            &OBC,
-            flagEventsFinishedSending);
-
-}
-
-void queueEvent(PL_Event_t event) {
-    if(eventQueueStart <= 0 || !finishedSendingEvents) {
-        // Overflow. This should not occur given the OBC does not send more than 256 commands.
-        return;
-    }
-
-    eventQueue[--eventQueueStart] = (byte) event;
-}
-
-void sendEvents() {
-    eventQueue[eventQueueStart - 2] = 2;
-    eventQueue[eventQueueStart - 1] = PL_START_BYTE;
-    finishedSendingEvents = false;
-
-    QT_SPI_stopListeningToMaster(); // Stop reading until the data is sent
-
-    QT_SPI_transmit(
-            &eventQueue[eventQueueStart - EVENT_QUEUE_HEADER_LENGTH],
-            4,
-            &OBC,
-            flagEventsFinishedSending);
-
-
-//    QT_SPI_transmit(
-//            &asf, 2, &OBC, flagEventsFinishedSending
-//            );
-
-    eventQueueStart = EVENT_QUEUE_LENGTH;
-}
-
-byte queryData [4] = { PL_START_BYTE, 2, 0, 0 };
-
-void handleQuery(PL_Query_t query, byte argument) {
-    switch(query) {
-    case PL_QUERY_EVENT:
-        sendEvents();
-        break;
-    case PL_QUERY_ERROR_STATUS:
+static bool handleQuery(PL_Query_t query, uint8_t argument) {
+    switch(query)
     {
-        byte error_data[2] = {ERROR_STATUS >> 8, ERROR_STATUS & 0x00FF};
-        sendQueryData(error_data, 2);
+        case PL_QUERY_EVENT:
+        QT_OBCSPI_writeTx((uint8_t*)eventQueue, eventQueueLength);
+        eventQueueLength = 0;
+        return true;
+        case PL_QUERY_ERROR_STATUS:
+        {
+            uint8_t data[2] = {(uint8_t)(ERROR_STATUS >> 8), (uint8_t)(ERROR_STATUS & 0xFF)};
+            QT_OBCSPI_writeTx(data, 2);
+        }
+        return true;
+        case PL_QUERY_DEPLOYMENT_STATE:
+        QT_OBCSPI_writeTx(QT_BW_getDeploymentStatus(), 3);
+        return true;
+        case PL_QUERY_PROBE_TEMPERATURE:
+        {
+            uint16_t temp = QT_IADC_readTemperature();
+            uint8_t data[2] = {(uint8_t)(temp >> 8), (uint8_t)(temp & 0xFF)};
+            QT_OBCSPI_writeTx(data, 2);
+        }
+        return true;
+        case PL_QUERY_PROBE_DIGIPOT:
+        QT_OBCSPI_writeTx(QT_DIGIPOT_getValue(), 2);
+        return true;
+        case PL_QUERY_PROBE_FP:
+        QT_OBCSPI_writeTx(QT_SW_getFloatingProbeVoltage(), 2);
+        return true;
+        case PL_QUERY_DAC:
+        QT_OBCSPI_writeTx(QT_DAC_getValue(), 2);
+        return true;
+        case PL_QUERY_16V_POWER_CUR:
+        {
+            uint16_t power = QT_IADC_readCurrent();
+            uint8_t data[2] = {(uint8_t)(power >> 8), (uint8_t)(power & 0xFF)};
+            QT_OBCSPI_writeTx(data, 2);
+        }
+        return true;
+        case PL_QUERY_CONTACT_SWITCH:
+        QT_OBCSPI_writeTx(QT_BW_getContactSwitchStatus(), 1);
+        return true;
+        case PL_QUERY_SAMPLING_DATA:
+        QT_OBCSPI_writeTx(QT_SW_getSweepData(), 2* SWEEP_MAX_NUM_SAMPLES * SWEEP_REPETITIONS);
+        return true;
+        default:
         break;
     }
-    case PL_QUERY_DEPLOYMENT_STATE:
-        sendQueryData(QT_BW_getDeploymentStatus(), 4);
-        break;
-    case PL_QUERY_PROBE_TEMPERATURE:
-    {
-        uint16_t temp = QT_IADC_readTemperature();
-        byte temp_data[2] = {temp >> 8, temp & 0x00FF};
-        sendQueryData(temp_data, 2);
-    }
-
-        break;
-    case PL_QUERY_PROBE_DIGIPOT:
-        sendQueryData(QT_DIGIPOT_getValue(), 2);
-        break;
-    case PL_QUERY_PROBE_FP:
-        sendQueryData(QT_SW_getFloatingProbeVoltage(), 2);
-        break;
-    case PL_QUERY_DAC:
-        sendQueryData(QT_DAC_getValue(), 2);
-        break;
-    case PL_QUERY_16V_POWER_CUR:
-    {
-        uint16_t temp = QT_IADC_readCurrent();
-        byte temp_data[2] = {temp >> 8, temp & 0x00FF};
-        sendQueryData(temp_data, 2);
-    }
-        break;
-    case PL_QUERY_CONTACT_SWITCH:
-        sendQueryData(QT_BW_getContactSwitchStatus(), 1);
-        break;
-    case PL_QUERY_SAMPLING_DATA:
-        sendQueryData(QT_SW_getSweepData(), 2* SWEEP_MAX_NUM_SAMPLES * SWEEP_REPETITIONS);
-        break;
-    }
+    return false;
 }
 
-void handleCommand(PL_Command_t command, byte argument) {
+static bool handleCommand(PL_Command_t command, byte argument) {
     if(commandRunning && (command == PL_COMMAND_POWER_OFF || command == PL_COMMAND_STOP)) {
         exitCommand = true;
         queueEvent(PL_EVENT_TASK_INTERRUPTED);
-
-        // Wait for the command to halt to ensure that the new value is read by the event loop
-//        while(commandRunning);
     } else if (commandRunning) {
-        return;
+        return false;
     }
 
     currentCommand = command;
     commandRunning = true;
+    return true;
 }
 
-void obcIncomingHandler(const byte *data) {
-    byte code = data[0];
-    byte argument = data[1];
+static void rxDataHandler(uint8_t * const rxData, const uint16_t rxDataLength)
+{
+    if (waitingForCommand == 1)
+    {
+        if (rxDataLength == 1 && rxData[0] == OBCSPI_FILL_BYTE)
+        {
+            QT_OBCSPI_clearRx();
+        }
+        else if (rxDataLength >= 2)
+        {
+            uint8_t code = rxData[0];
+            uint8_t argument = rxData[1];
+            bool valid = false;
 
-    if (code == 0) {
-        return;
-    } else if ((code < PL_COMMAND_ENUM_COUNT)) {
-        handleCommand((PL_Command_t) code, argument);//, data + 1);
-    } else {
-        handleQuery((PL_Query_t) code, argument);
+            if (code < PL_COMMAND_ENUM_COUNT)
+            {
+                valid = handleCommand((PL_Command_t) code, argument);
+            }
+            else
+            {
+                valid = handleQuery((PL_Query_t) code, argument);
+            }
+
+            if (valid)
+            {
+                waitingForCommand = 0;
+            }
+            QT_OBCSPI_clearRx();
+        }
+    }
+    else
+    {
+        if (rxDataLength >= 1 && rxData[0] == PL_INTERRUPT_BYTE)
+        {
+            QT_OBCSPI_clearTx();
+            waitingForCommand = 1;
+        }
+        QT_OBCSPI_clearRx();
     }
 }
 
-/**
- * Start the SPI communication listening lines.
- */
-void startListening() {
-    QT_SPI_setReceiveHandler(obcIncomingHandler, 2, &OBC);
-    QT_SPI_listenToMaster();
+static void txDataHandler(uint8_t * const txData, const uint16_t txDataLength, const uint16_t txDataSent)
+{
+    if (waitingForCommand == 0 && txDataSent == txDataLength)
+    {
+        QT_OBCSPI_clearTx();
+        waitingForCommand = 1;
+    }
+}
+
+void QT_OBC_Interface_init()
+{
+    QT_OBCSPI_registerISRHandlers(&rxDataHandler, &txDataHandler);
+}
+
+void queueEvent(PL_Event_t event) {
+    if (eventQueueLength < EVENT_QUEUE_SIZE)
+    {
+        eventQueue[eventQueueLength] = event;
+        eventQueueLength += 1;
+    }
+}
+
+void QT_OBC_Interface_commandLoop()
+{
+//         Wait until a command has been queued
+        while(!commandRunning)
+        {
+            __no_operation();
+        }
+//         These command functions are blocking.
+        switch(currentCommand) {
+        case PL_COMMAND_STOP:
+        {
+//            int a =1;
+        }
+            break;
+        case PL_COMMAND_POWER_OFF:
+            QT_PWR_turnOff16V();
+            queueEvent(PL_EVENT_PROBE_UNPOWERED);
+            break;
+        case PL_COMMAND_POWER_ON:
+            QT_PWR_turnOn16V();
+            queueEvent(PL_EVENT_PROBE_POWERED);
+            break;
+        case PL_COMMAND_SWEEP:
+            queueEvent(PL_EVENT_SWEEP_STARTED);
+            QT_SW_getPlasmaData();
+            queueEvent(PL_EVENT_SWEEP_COMPLETE);
+            break;
+        case PL_COMMAND_DEPLOY:
+            queueEvent(PL_EVENT_DEPLOY_STARTED);
+            QT_BW_deploy();
+            queueEvent(PL_EVENT_DEPLOY_COMPLETE);
+            break;
+        case PL_COMMAND_DEPLOY_SP:
+            queueEvent(PL_EVENT_DEPLOY_STARTED);
+            QT_BW_deploySP();
+            queueEvent(PL_EVENT_DEPLOY_COMPLETE);
+            break;
+        case PL_COMMAND_DEPLOY_FP:
+            queueEvent(PL_EVENT_DEPLOY_STARTED);
+            QT_BW_deployFP();
+            queueEvent(PL_EVENT_DEPLOY_COMPLETE);
+            break;
+        case PL_COMMAND_CLEAR_ERRORS:
+            ERROR_STATUS = 0;
+        default:
+            break;
+        }
+
+        commandRunning = false;
 }

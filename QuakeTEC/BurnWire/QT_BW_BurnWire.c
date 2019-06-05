@@ -238,11 +238,11 @@ void QT_BW_deploy() {
     }
     QT_BW_reset();
     byte* d = QT_BW_getDeploymentStatus();
-    int q =1;
-    byte a, b, c;
-    a = d[0];
-    b = d[1];
-    c = d[2];
+//    int q =1;
+//    byte a, b, c;
+//    a = d[0];
+//    b = d[1];
+//    c = d[2];
 }
 
 void QT_BW_deployFP() {
