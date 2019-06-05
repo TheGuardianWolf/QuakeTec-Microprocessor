@@ -162,7 +162,7 @@ void USCI_A1_ISR (void)
             else
             {
 //                EUSCI_A_SPI_transmitData(EUSCI_A1_BASE, receivedData);
-                EUSCI_A_SPI_transmitData(EUSCI_A1_BASE, receivedData);
+                EUSCI_A_SPI_transmitData(EUSCI_A1_BASE, OBCSPI_NULL_BYTE);
             }
 
             // Handle Tx
