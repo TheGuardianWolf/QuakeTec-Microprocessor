@@ -33,6 +33,10 @@ void QT_PWR_turnOffGuard() {
     GPIO_setOutputLowOnPin(POWER_GUARD_PORT, POWER_GUARD_PIN);
 }
 
+bool QT_PWR_getPowerStatus() {
+    return powerStatus;
+}
+
 float QT_PWR_getCurrent16V() {
     //TODO read in adc value at cur sense pin
     return 0.0;

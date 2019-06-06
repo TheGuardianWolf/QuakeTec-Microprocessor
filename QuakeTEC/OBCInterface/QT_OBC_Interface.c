@@ -4,7 +4,7 @@
 
 #define EVENT_QUEUE_SIZE (255)
 
-static uint16_t waitingForCommand = 1;
+static uint16_t readBlock = 1;
 
 static volatile PL_Command_t currentCommand = PL_COMMAND_IGNORE;
 static volatile bool commandRunning = false;
@@ -28,6 +28,12 @@ static bool handleQuery(PL_Query_t query, uint8_t argument) {
         return true;
         case PL_QUERY_DEPLOYMENT_STATE:
         QT_OBCSPI_writeTx(QT_BW_getDeploymentStatus(), 3);
+        return true;
+        case PL_QUERY_PROBE_POWER:
+        {
+            uint8_t data = (uint8_t)QT_PWR_getPowerStatus();
+            QT_OBCSPI_writeTx(&data, 1);
+        }
         return true;
         case PL_QUERY_PROBE_TEMPERATURE:
         {
@@ -69,6 +75,7 @@ static bool handleCommand(PL_Command_t command, byte argument) {
         exitCommand = true;
         queueEvent(PL_EVENT_TASK_INTERRUPTED);
     } else if (commandRunning) {
+        queueEvent(PL_EVENT_TASK_BUSY);
         return false;
     }
 
@@ -79,7 +86,7 @@ static bool handleCommand(PL_Command_t command, byte argument) {
 
 static void rxDataHandler(uint8_t * const rxData, const uint16_t rxDataLength)
 {
-    if (waitingForCommand == 1)
+    if (readBlock == 1)
     {
         if (rxDataLength == 1 && rxData[0] == OBCSPI_FILL_BYTE)
         {
@@ -89,20 +96,20 @@ static void rxDataHandler(uint8_t * const rxData, const uint16_t rxDataLength)
         {
             uint8_t code = rxData[0];
             uint8_t argument = rxData[1];
-            bool valid = false;
+            bool block = false;
 
             if (code < PL_COMMAND_ENUM_COUNT)
             {
-                valid = handleCommand((PL_Command_t) code, argument);
+                (void)handleCommand((PL_Command_t) code, argument);
             }
             else
             {
-                valid = handleQuery((PL_Query_t) code, argument);
+                block = handleQuery((PL_Query_t) code, argument);
             }
 
-            if (valid)
+            if (block)
             {
-                waitingForCommand = 0;
+                readBlock = 0;
             }
             QT_OBCSPI_clearRx();
         }
@@ -112,7 +119,7 @@ static void rxDataHandler(uint8_t * const rxData, const uint16_t rxDataLength)
         if (rxDataLength >= 1 && rxData[0] == PL_INTERRUPT_BYTE)
         {
             QT_OBCSPI_clearTx();
-            waitingForCommand = 1;
+            readBlock = 1;
         }
         QT_OBCSPI_clearRx();
     }
@@ -120,10 +127,10 @@ static void rxDataHandler(uint8_t * const rxData, const uint16_t rxDataLength)
 
 static void txDataHandler(uint8_t * const txData, const uint16_t txDataLength, const uint16_t txDataSent)
 {
-    if (waitingForCommand == 0 && txDataSent == txDataLength)
+    if (readBlock == 0 && txDataSent == txDataLength)
     {
         QT_OBCSPI_clearTx();
-        waitingForCommand = 1;
+        readBlock = 1;
     }
 }
 
@@ -150,9 +157,6 @@ void QT_OBC_Interface_commandLoop()
 //         These command functions are blocking.
         switch(currentCommand) {
         case PL_COMMAND_STOP:
-        {
-//            int a =1;
-        }
             break;
         case PL_COMMAND_POWER_OFF:
             QT_PWR_turnOff16V();
@@ -173,14 +177,14 @@ void QT_OBC_Interface_commandLoop()
             queueEvent(PL_EVENT_DEPLOY_COMPLETE);
             break;
         case PL_COMMAND_DEPLOY_SP:
-            queueEvent(PL_EVENT_DEPLOY_STARTED);
+            queueEvent(PL_EVENT_DEPLOY_SP_STARTED);
             QT_BW_deploySP();
-            queueEvent(PL_EVENT_DEPLOY_COMPLETE);
+            queueEvent(PL_EVENT_DEPLOY_SP_COMPLETE);
             break;
         case PL_COMMAND_DEPLOY_FP:
-            queueEvent(PL_EVENT_DEPLOY_STARTED);
+            queueEvent(PL_EVENT_DEPLOY_FP_STARTED);
             QT_BW_deployFP();
-            queueEvent(PL_EVENT_DEPLOY_COMPLETE);
+            queueEvent(PL_EVENT_DEPLOY_FP_COMPLETE);
             break;
         case PL_COMMAND_CLEAR_ERRORS:
             ERROR_STATUS = 0;

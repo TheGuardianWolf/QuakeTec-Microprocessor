@@ -16,6 +16,8 @@ void QT_PWR_turnOnGuard();
 
 void QT_PWR_turnOffGuard();
 
+bool QT_PWR_getPowerStatus();
+
 float QT_PWR_getCurrent16V();
 
 #endif
