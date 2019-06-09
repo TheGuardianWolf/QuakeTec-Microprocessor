@@ -4,7 +4,7 @@
 
 #define EVENT_QUEUE_SIZE (255)
 
-static uint16_t readBlock = 1;
+static uint16_t waitTransmit = 1;
 
 static volatile PL_Command_t currentCommand = PL_COMMAND_IGNORE;
 static volatile bool commandRunning = false;
@@ -86,7 +86,7 @@ static bool handleCommand(PL_Command_t command, byte argument) {
 
 static void rxDataHandler(uint8_t * const rxData, const uint16_t rxDataLength)
 {
-    if (readBlock == 1)
+    if (waitTransmit == 1)
     {
         if (rxDataLength == 1 && rxData[0] == OBCSPI_FILL_BYTE)
         {
@@ -109,7 +109,7 @@ static void rxDataHandler(uint8_t * const rxData, const uint16_t rxDataLength)
 
             if (block)
             {
-                readBlock = 0;
+                waitTransmit = 0;
             }
             QT_OBCSPI_clearRx();
         }
@@ -119,7 +119,7 @@ static void rxDataHandler(uint8_t * const rxData, const uint16_t rxDataLength)
         if (rxDataLength >= 1 && rxData[0] == PL_INTERRUPT_BYTE)
         {
             QT_OBCSPI_clearTx();
-            readBlock = 1;
+            waitTransmit = 1;
         }
         QT_OBCSPI_clearRx();
     }
@@ -127,10 +127,10 @@ static void rxDataHandler(uint8_t * const rxData, const uint16_t rxDataLength)
 
 static void txDataHandler(uint8_t * const txData, const uint16_t txDataLength, const uint16_t txDataSent)
 {
-    if (readBlock == 0 && txDataSent == txDataLength)
+    if (waitTransmit == 0 && txDataSent == txDataLength)
     {
         QT_OBCSPI_clearTx();
-        readBlock = 1;
+        waitTransmit = 1;
     }
 }
 
